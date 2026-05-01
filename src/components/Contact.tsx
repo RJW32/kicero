@@ -5,13 +5,37 @@ import { Mail, Send } from 'lucide-react';
 export default function Contact() {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormState('submitting');
-    // Simulate API call
-    setTimeout(() => {
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const payload = {
+      name: String(formData.get('name') ?? '').trim(),
+      email: String(formData.get('email') ?? '').trim(),
+      message: String(formData.get('message') ?? '').trim(),
+      website: String(formData.get('website') ?? ''),
+    };
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        setFormState('idle');
+        return;
+      }
+
       setFormState('success');
-    }, 1500);
+      form.reset();
+    } catch {
+      setFormState('idle');
+    }
   };
 
   return (
@@ -66,6 +90,7 @@ export default function Contact() {
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-brand-gray-500">Name</label>
                     <input 
+                      name="name"
                       required
                       type="text" 
                       className="w-full bg-brand-black/20 border-b border-brand-gray-700 py-3 px-0 focus:border-brand-gray-400 focus:outline-none transition-colors text-brand-white"
@@ -75,6 +100,7 @@ export default function Contact() {
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-brand-gray-500">Email Address</label>
                     <input 
+                      name="email"
                       required
                       type="email" 
                       className="w-full bg-brand-black/20 border-b border-brand-gray-700 py-3 px-0 focus:border-brand-gray-400 focus:outline-none transition-colors text-brand-white"
@@ -94,12 +120,21 @@ export default function Contact() {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-brand-gray-500">Message</label>
                   <textarea 
+                    name="message"
                     required
                     rows={4}
                     className="w-full bg-brand-black/20 border-b border-brand-gray-700 py-3 px-0 focus:border-brand-gray-400 focus:outline-none transition-colors resize-none text-brand-white"
                     placeholder="Tell us about your project..."
                   />
                 </div>
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  className="hidden"
+                  aria-hidden="true"
+                />
                 <button 
                   type="submit"
                   disabled={formState === 'submitting'}

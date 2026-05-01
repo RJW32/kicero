@@ -1,26 +1,32 @@
 import { motion, useScroll, useTransform } from 'motion/react';
 import { ExternalLink } from 'lucide-react';
 import { useRef } from 'react';
+import oneStepImage from '../assets/One Step.png';
+import alexanderSynthwaveImage from '../assets/Alexander the Great Synthwave.png';
+import neonNoodlesImage from '../assets/Neon Noodles.png';
 
 const projects = [
   {
     title: 'One Step',
     category: 'Minimal Web App',
-    image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1200',
+    image: oneStepImage,
+    objectPosition: 'center 20%',
     description: 'A clean, high-performance web experience focused on simplicity.',
     link: 'https://one-step.kicero.workers.dev'
   },
   {
     title: 'Alexander Synthwave',
     category: 'Interactive Experience',
-    image: 'https://images.unsplash.com/photo-1614850523296-d8c1af93d400?auto=format&fit=crop&q=80&w=1200',
+    image: alexanderSynthwaveImage,
+    objectPosition: 'center 30%',
     description: 'Retro-futuristic aesthetic meets classical historical narrative.',
     link: 'https://alexander-the-great-synthwave.kicero.workers.dev'
   },
   {
     title: 'Neon Noodles',
     category: 'E-commerce / Restaurant',
-    image: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&q=80&w=1200',
+    image: neonNoodlesImage,
+    objectPosition: 'center 45%',
     description: 'Vibrant, neon-lit digital space for a modern street food brand.',
     link: 'https://neon-noodles.kicero.workers.dev'
   }
@@ -55,11 +61,11 @@ function PortfolioCard({ project, idx }: PortfolioCardProps) {
       transition={{ duration: 0.8, delay: idx * 0.1 }}
       className="group block cursor-pointer"
     >
-      <div className="relative overflow-hidden aspect-[4/3] bg-brand-gray-50 grayscale hover:grayscale-0 transition-all duration-700 block">
+      <div className="relative overflow-hidden aspect-[4/3] bg-brand-gray-50 transition-all duration-700 block">
         <motion.img 
           src={project.image} 
           alt={project.title}
-          style={{ scale: 1.2, y: imgY }}
+          style={{ scale: 1.2, y: imgY, objectPosition: project.objectPosition }}
           className="w-full h-full object-cover transition-transform duration-700"
         />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

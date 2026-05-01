@@ -1,0 +1,7 @@
+name = "kicero"
+compatibility_date = "2026-05-01"
+main = "worker.ts"
+
+[assets]
+directory = "dist"
+binding = "ASSETS"

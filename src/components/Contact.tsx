@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useRef, useState } from 'react';
+import { motion, useScroll, useSpring, useTransform } from 'motion/react';
 import { Mail, Send } from 'lucide-react';
 
 export default function Contact() {
   const [formState, setFormState] = useState<'idle' | 'submitting' | 'success'>('idle');
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start'],
+  });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 70, damping: 24, mass: 0.5 });
+  const bgTextY = useTransform(smoothProgress, [0, 1], [60, -60]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -39,10 +46,15 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="py-24 bg-black text-white relative overflow-hidden">
+    <section ref={sectionRef} id="contact" className="py-24 bg-black text-white relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
             <span className="text-xs font-bold uppercase tracking-widest text-brand-gray-300 mb-6 block">Let's talk</span>
             <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-10 leading-none">
               READY TO <br />
@@ -57,13 +69,19 @@ export default function Contact() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-brand-gray-300/50 mb-1">Email us</p>
-                  <p className="text-lg">info@kicero.co.uk</p>
+                  <p className="text-lg break-all">info@kicero.co.uk</p>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-brand-gray-900 border border-brand-gray-800 p-8 md:p-12">
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
+            className="bg-brand-gray-900 border border-brand-gray-800 p-8 md:p-12"
+          >
             {formState === 'success' ? (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
@@ -144,14 +162,14 @@ export default function Contact() {
                 </button>
               </form>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
       
       {/* Decorative text */}
-      <div className="absolute bottom-[-10%] right-[-5%] opacity-5 pointer-events-none">
+      <motion.div style={{ y: bgTextY }} className="absolute bottom-[-10%] right-[-5%] opacity-5 pointer-events-none">
         <span className="font-display text-[30vw] font-bold leading-none select-none tracking-tighter">KICERO</span>
-      </div>
+      </motion.div>
     </section>
   );
 }

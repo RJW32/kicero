@@ -1,17 +1,31 @@
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useScroll, useSpring, useTransform } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Magnetic from './Magnetic';
 
 export default function Hero() {
   const location = useLocation();
+  const [isDesktop, setIsDesktop] = useState(false);
   const { scrollY } = useScroll();
+  const smoothScrollY = useSpring(scrollY, { stiffness: 65, damping: 22, mass: 0.5 });
+  const parallaxFactor = isDesktop ? 1 : 0;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener('change', update);
+    return () => mediaQuery.removeEventListener('change', update);
+  }, []);
 
   // Parallax offsets
-  const yText = useTransform(scrollY, [0, 500], [0, 100]);
-  const yBox = useTransform(scrollY, [0, 500], [0, -150]);
-  const yTag = useTransform(scrollY, [0, 500], [0, -80]);
-  const opacity = useTransform(scrollY, [0, 300], [1, 0]);
+  const yBox = useTransform(smoothScrollY, [0, 600], [0, -340 * parallaxFactor]);
+  const yTag = useTransform(smoothScrollY, [0, 600], [0, -220 * parallaxFactor]);
+  const performanceTagY = useTransform(smoothScrollY, [0, 600], [0, 150 * parallaxFactor]);
+  const boxRotate = useTransform(smoothScrollY, [0, 600], [0, -8 * parallaxFactor]);
+  const boxScale = useTransform(smoothScrollY, [0, 600], [1, 1.08 * parallaxFactor + (1 - parallaxFactor)]);
+  const opacity = useTransform(smoothScrollY, [0, 300], [1, 0]);
 
   const handleLinkClick = (path: string) => {
     if (location.pathname === path) {
@@ -24,7 +38,6 @@ export default function Hero() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div
-            style={{ y: yText }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
@@ -32,7 +45,7 @@ export default function Hero() {
             <span className="inline-block px-3 py-1 bg-brand-gray-100 text-brand-gray-600 text-[10px] font-bold uppercase tracking-[0.2em] mb-6">
               Full-Stack Web Development Agency
             </span>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.9] mb-8">
+            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.9] mb-8 break-words">
               WE BUILD <br />
               COMMANDING <br />
               <span className="italic">PRESENCE.</span>
@@ -64,7 +77,7 @@ export default function Hero() {
           </motion.div>
 
           <motion.div
-            style={{ y: yBox }}
+            style={{ y: yBox, rotate: boxRotate, scale: boxScale }}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.4 }}
@@ -91,7 +104,7 @@ export default function Hero() {
                 Minimal
               </motion.div>
               <motion.div 
-                style={{ y: useTransform(scrollY, [0, 500], [0, 50]) }}
+                style={{ y: performanceTagY }}
                 className="absolute bottom-10 left-10 px-4 py-2 bg-white border border-black text-[10px] font-bold uppercase tracking-widest"
               >
                 Performance

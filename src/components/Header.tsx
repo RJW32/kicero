@@ -19,6 +19,7 @@ export default function Header() {
     { name: 'Home', href: '/' },
     { name: 'Pricing', href: '/services' },
     { name: 'Portfolio', href: '/portfolio' },
+    { name: 'Blog', href: '/blog' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -26,6 +27,7 @@ export default function Header() {
     <header id="main-header" className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-brand-gray-200">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <motion.div 
+          className="shrink-0 mr-8 md:mr-12"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
@@ -37,7 +39,12 @@ export default function Header() {
             <span className="text-2xl font-display font-bold tracking-tighter">KICERO</span>
             <img
               src={kiceroLogoBlack}
-              alt="Kicero logo"
+              alt=""
+              aria-hidden="true"
+              width={18}
+              height={18}
+              loading="eager"
+              decoding="async"
               className="h-[18px] w-auto object-contain translate-y-[0.5px]"
             />
           </Link>

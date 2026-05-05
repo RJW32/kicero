@@ -1,10 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/*
+ * Fonts are loaded non-blocking from index.html (Google Fonts via the
+ * print/swap pattern). Don't @import them here — that would re-introduce a
+ * render-blocking dependency for the whole stylesheet.
+ */
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+
   --color-brand-black: #000000;
   --color-brand-white: #ffffff;
   --color-brand-gray-50: #fafafa;
@@ -20,51 +25,77 @@
 }
 
 @layer base {
+  html {
+    /* Enable smooth scroll, but bail out for users who prefer reduced motion. */
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
     @apply bg-brand-white text-brand-black font-sans antialiased selection:bg-brand-black selection:text-brand-white;
   }
 }
 
-.perspective-1000 {
-  perspective: 1000px;
-}
-
-@keyframes placeholderPulse {
-  0%,
-  100% {
-    color: rgba(158, 158, 158, 0.35);
-  }
-  50% {
-    color: rgba(189, 189, 189, 0.95);
-  }
-}
-
-.placeholder-slow-flash::placeholder {
-  color: rgba(158, 158, 158, 0.55) !important;
-  animation: placeholderPulse 2.2s ease-in-out infinite !important;
-}
-
-.placeholder-slow-flash::-webkit-input-placeholder {
-  color: rgba(158, 158, 158, 0.55) !important;
-  animation: placeholderPulse 2.2s ease-in-out infinite !important;
-}
-
-.placeholder-slow-flash::-moz-placeholder {
-  color: rgba(158, 158, 158, 0.55) !important;
-  animation: placeholderPulse 2.2s ease-in-out infinite !important;
-}
-
-.placeholder-slow-flash:-ms-input-placeholder {
-  color: rgba(158, 158, 158, 0.55) !important;
-  animation: placeholderPulse 2.2s ease-in-out infinite !important;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
+/*
+ * Custom dot/ring cursor (rendered by <Cursor />) replaces the system
+ * cursor on fine-pointer devices only. Touch devices keep their default.
+ */
 @media (pointer: fine) {
-  html, a, button {
+  html,
+  a,
+  button {
     cursor: none;
   }
+}
+
+/* Blog article body styling. */
+.kicero-prose h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--color-brand-black);
+}
+
+.kicero-prose h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-brand-black);
+}
+
+.kicero-prose p {
+  margin-bottom: 1.25rem;
+}
+
+.kicero-prose ol,
+.kicero-prose ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.kicero-prose ol {
+  list-style: decimal;
+}
+
+.kicero-prose ul {
+  list-style: disc;
+}
+
+.kicero-prose li {
+  margin-bottom: 0.5rem;
+}
+
+.kicero-prose a {
+  text-decoration: underline;
 }

@@ -99,6 +99,25 @@ export default function Pricing() {
           </div>
         </div>
       </div>
+
+      <div className="border border-brand-gray-200 bg-brand-gray-50/50 p-6 md:p-8 mt-12 max-w-3xl">
+        <h3 className="font-display text-sm font-bold uppercase tracking-widest text-brand-black mb-4">
+          What this pricing is for
+        </h3>
+        <p className="text-brand-gray-600 text-sm md:text-base font-light leading-relaxed mb-4">
+          These figures apply to our <strong className="font-medium text-brand-black">basic simple website</strong> — a focused brochure-style site with:
+        </p>
+        <ul className="space-y-2 text-brand-gray-600 text-sm md:text-base font-light leading-relaxed list-disc pl-5 mb-4">
+          <li>Landing page</li>
+          <li>About page</li>
+          <li>Contact page with a working email contact form</li>
+          <li>Portfolio page</li>
+          <li>Images across these pages, plus one video per website</li>
+        </ul>
+        <p className="text-brand-gray-600 text-sm md:text-base font-light leading-relaxed border-l-2 border-brand-gray-300 pl-4">
+          Anything beyond that — extra pages, features, or integrations — we can discuss. We will confirm whether it can sit within this package or whether pricing needs to change before we commit.
+        </p>
+      </div>
     </motion.section>
   );
 }

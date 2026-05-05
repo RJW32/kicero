@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kicero.co.uk/sitemap.xml

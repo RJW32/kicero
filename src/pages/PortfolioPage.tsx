@@ -1,7 +1,22 @@
-import { motion } from 'motion/react';
+import {motion} from 'motion/react';
 import Portfolio from '../components/Portfolio';
+import {portfolioProjects} from '../data/portfolio';
+import {usePageSeo} from '../seo/usePageSeo';
+import {pageMeta} from '../seo/seoConfig';
+import {buildBreadcrumb, portfolioListSchema} from '../seo/structuredData';
 
 export default function PortfolioPage() {
+  usePageSeo({
+    meta: pageMeta.portfolio,
+    structuredData: [
+      portfolioListSchema(portfolioProjects),
+      buildBreadcrumb([
+        {name: 'Home', path: '/'},
+        {name: 'Portfolio', path: '/portfolio'},
+      ]),
+    ],
+  });
+
   return (
     <div className="pt-32 pb-20">
       <motion.div
@@ -13,7 +28,7 @@ export default function PortfolioPage() {
       >
         <h1 className="font-display text-5xl md:text-8xl font-bold tracking-tighter mb-4 text-brand-gray-400">PORTFOLIO</h1>
         <p className="text-brand-gray-600 max-w-2xl text-lg font-light">
-          Explore our collection of meticulously crafted digital experiences.
+          Custom websites built by Kicero for small businesses, startups and creative projects across the UK. Each project is bespoke — no templates.
         </p>
       </motion.div>
       <Portfolio />

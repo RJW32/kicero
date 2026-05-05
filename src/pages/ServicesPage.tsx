@@ -1,9 +1,32 @@
-import { motion } from 'motion/react';
-import { Mail } from 'lucide-react';
+import {motion} from 'motion/react';
+import {Mail} from 'lucide-react';
 import Pricing from '../components/Pricing';
 import Services from '../components/Services';
+import FAQ from '../components/FAQ';
+import {faqItems} from '../data/faq';
+import {usePageSeo} from '../seo/usePageSeo';
+import {pageMeta} from '../seo/seoConfig';
+import {
+  buildBreadcrumb,
+  faqSchema,
+  offerSchema,
+  servicesListSchema,
+} from '../seo/structuredData';
 
 export default function ServicesPage() {
+  usePageSeo({
+    meta: pageMeta.services,
+    structuredData: [
+      offerSchema,
+      servicesListSchema,
+      faqSchema(faqItems.map((item) => ({question: item.question, answer: item.answer}))),
+      buildBreadcrumb([
+        {name: 'Home', path: '/'},
+        {name: 'Pricing & Services', path: '/services'},
+      ]),
+    ],
+  });
+
   return (
     <div className="pt-32 pb-20">
       <motion.div
@@ -15,7 +38,7 @@ export default function ServicesPage() {
       >
         <h1 className="font-display text-5xl md:text-8xl font-bold tracking-tighter mb-4">PRICING</h1>
         <p className="text-brand-gray-600 max-w-2xl text-lg font-light">
-          We specialize in high-performance digital products that help businesses scale and stand out in a crowded marketplace.
+          Transparent, low-cost pricing for high-end custom websites. Built by a Scottish studio for small businesses across the UK — and you only pay once your site is live.
         </p>
       </motion.div>
       <Pricing />
@@ -23,6 +46,9 @@ export default function ServicesPage() {
         <h2 className="font-display text-3xl md:text-6xl font-bold tracking-tighter mb-8">SERVICES</h2>
         <Services />
       </div>
+
+      <FAQ />
+
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}

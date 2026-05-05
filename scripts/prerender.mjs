@@ -35,67 +35,57 @@ const routes = [
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 function startPreviewServer() {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const proc = spawn(
-      'npx',
-      [
-        'vite',
-        'preview',
-        '--port',
-        String(PREVIEW_PORT),
-        '--host',
-        PREVIEW_HOST,
-        '--strictPort',
-      ],
-      {cwd: projectRoot, stdio: ['ignore', 'pipe', 'pipe']},
-    );
+  const proc = spawn(
+    'npx',
+    [
+      'vite',
+      'preview',
+      '--port',
+      String(PREVIEW_PORT),
+      '--host',
+      PREVIEW_HOST,
+      '--strictPort',
+    ],
+    {
+      cwd: projectRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {...process.env, FORCE_COLOR: '0', NO_COLOR: '1'},
+    },
+  );
 
-    let resolved = false;
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        proc.kill();
-        rejectPromise(new Error('Preview server failed to start in time'));
-      }
-    }, 30_000);
-
-    const onReady = () => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timer);
-      resolvePromise(proc);
-    };
-
-    proc.stdout.on('data', (chunk) => {
-      const text = chunk.toString();
-      process.stdout.write(`[preview] ${text}`);
-      if (text.includes(`localhost:${PREVIEW_PORT}`) || text.includes(PREVIEW_URL)) {
-        onReady();
-      }
-    });
-    proc.stderr.on('data', (chunk) => {
-      process.stderr.write(`[preview] ${chunk}`);
-    });
-    proc.on('exit', (code) => {
-      if (!resolved) {
-        clearTimeout(timer);
-        rejectPromise(new Error(`Preview server exited (code ${code}) before ready`));
-      }
-    });
+  proc.stdout.on('data', (chunk) => {
+    process.stdout.write(`[preview] ${chunk}`);
   });
+  proc.stderr.on('data', (chunk) => {
+    process.stderr.write(`[preview] ${chunk}`);
+  });
+
+  return proc;
 }
 
-async function waitForServer(url, timeoutMs = 30_000) {
+async function waitForServer(url, proc, timeoutMs = 60_000) {
   const start = Date.now();
+  let lastError;
   while (Date.now() - start < timeoutMs) {
+    if (proc.exitCode !== null) {
+      throw new Error(
+        `Preview server exited with code ${proc.exitCode} before becoming ready`,
+      );
+    }
     try {
       const res = await fetch(url);
       if (res.ok || res.status === 404) return;
-    } catch {
-      // not ready yet
+      lastError = new Error(`status ${res.status}`);
+    } catch (err) {
+      lastError = err;
     }
-    await sleep(300);
+    await sleep(500);
   }
-  throw new Error(`Preview server never responded at ${url}`);
+  throw new Error(
+    `Preview server never responded at ${url} (last error: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    })`,
+  );
 }
 
 async function prerender(browser, route) {
@@ -154,10 +144,10 @@ async function main() {
   await readFile(join(distDir, 'index.html'), 'utf-8');
 
   console.log('Starting preview server...');
-  const previewProc = await startPreviewServer();
+  const previewProc = startPreviewServer();
 
   try {
-    await waitForServer(PREVIEW_URL);
+    await waitForServer(PREVIEW_URL, previewProc);
     console.log(`Preview ready at ${PREVIEW_URL}`);
 
     const browser = await puppeteer.launch({

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
+import kiceroLogoBlack from '../assets/Logo/Kicero Logo Black.svg';
 
 interface IntroProps {
   onComplete: () => void;
@@ -35,14 +36,24 @@ export default function Intro({ onComplete }: IntroProps) {
             >
               Welcome to
             </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-              className="font-display text-5xl md:text-8xl font-bold tracking-tighter uppercase"
-            >
-              KICERO
-            </motion.h1>
+            <div className="flex items-end gap-3 md:gap-4">
+              <motion.h1
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+                className="font-display text-5xl md:text-8xl font-bold tracking-tighter uppercase"
+              >
+                KICERO
+              </motion.h1>
+              <motion.img
+                src={kiceroLogoBlack}
+                alt="Kicero logo"
+                initial={{ opacity: 0, x: 64 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.9, delay: 1.05, ease: [0.16, 1, 0.3, 1] }}
+                className="h-10 md:h-16 w-auto object-contain -translate-y-2.5 md:-translate-y-3.5"
+              />
+            </div>
           </div>
         </motion.div>
       )}

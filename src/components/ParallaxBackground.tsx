@@ -1,5 +1,6 @@
 import { motion, useScroll, useSpring, useTransform } from 'motion/react';
 import { useEffect, useState } from 'react';
+import kiceroLogoLightGray from '../assets/Logo/Kicero Logo Light Gray.svg';
 
 export default function ParallaxBackground() {
   const [isDesktop, setIsDesktop] = useState(false);
@@ -190,6 +191,36 @@ export default function ParallaxBackground() {
       <motion.div
         style={{ y: y6Loop, x: xDriftReverse }}
         className="absolute top-[82%] right-[8%] w-56 h-56 rounded-full bg-brand-gray-100/70 blur-3xl"
+      />
+
+      {/* Light gray brand logo accents */}
+      <motion.img
+        src={kiceroLogoLightGray}
+        alt=""
+        aria-hidden="true"
+        style={{ y: y5Wrapped, x: xDriftReverse, rotate: rotate2 }}
+        className="absolute top-[34%] right-[10%] w-44 md:w-60 opacity-45 will-change-transform"
+      />
+      <motion.img
+        src={kiceroLogoLightGray}
+        alt=""
+        aria-hidden="true"
+        style={{ y: y5Loop, x: xDriftReverse, rotate: rotate2 }}
+        className="absolute top-[34%] right-[10%] w-44 md:w-60 opacity-45 will-change-transform"
+      />
+      <motion.img
+        src={kiceroLogoLightGray}
+        alt=""
+        aria-hidden="true"
+        style={{ y: y3Wrapped, x: xDrift }}
+        className="absolute top-[66%] left-[6%] w-36 md:w-52 opacity-35 will-change-transform"
+      />
+      <motion.img
+        src={kiceroLogoLightGray}
+        alt=""
+        aria-hidden="true"
+        style={{ y: y3Loop, x: xDrift }}
+        className="absolute top-[66%] left-[6%] w-36 md:w-52 opacity-35 will-change-transform"
       />
 
       {/* Vertical Accent Lines */}

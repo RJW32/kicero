@@ -29,6 +29,36 @@
   perspective: 1000px;
 }
 
+@keyframes placeholderPulse {
+  0%,
+  100% {
+    color: rgba(158, 158, 158, 0.35);
+  }
+  50% {
+    color: rgba(189, 189, 189, 0.95);
+  }
+}
+
+.placeholder-slow-flash::placeholder {
+  color: rgba(158, 158, 158, 0.55) !important;
+  animation: placeholderPulse 2.2s ease-in-out infinite !important;
+}
+
+.placeholder-slow-flash::-webkit-input-placeholder {
+  color: rgba(158, 158, 158, 0.55) !important;
+  animation: placeholderPulse 2.2s ease-in-out infinite !important;
+}
+
+.placeholder-slow-flash::-moz-placeholder {
+  color: rgba(158, 158, 158, 0.55) !important;
+  animation: placeholderPulse 2.2s ease-in-out infinite !important;
+}
+
+.placeholder-slow-flash:-ms-input-placeholder {
+  color: rgba(158, 158, 158, 0.55) !important;
+  animation: placeholderPulse 2.2s ease-in-out infinite !important;
+}
+
 html {
   scroll-behavior: smooth;
 }

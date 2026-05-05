@@ -5,6 +5,25 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import puppeteer from 'puppeteer';
 
+async function launchBrowser() {
+  // On Linux (e.g. Cloudflare Pages build) use @sparticuz/chromium, which
+  // ships a self-contained Chromium that doesn't depend on system libs like
+  // libatk-1.0.so.0. Locally (e.g. macOS) fall back to the chromium that
+  // puppeteer downloads on install.
+  if (process.platform === 'linux') {
+    const {default: chromium} = await import('@sparticuz/chromium');
+    return puppeteer.launch({
+      args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath: await chromium.executablePath(),
+      headless: 'shell',
+    });
+  }
+  return puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = resolve(__dirname, '..');
@@ -150,10 +169,7 @@ async function main() {
     await waitForServer(PREVIEW_URL, previewProc);
     console.log(`Preview ready at ${PREVIEW_URL}`);
 
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    const browser = await launchBrowser();
 
     try {
       for (const route of routes) {

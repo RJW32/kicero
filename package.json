@@ -26,6 +26,7 @@
     "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^148.0.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",

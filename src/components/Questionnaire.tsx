@@ -13,7 +13,10 @@ import {
   type FileQuestion,
   type QuestionnaireQuestion,
 } from '../data/questionnaire';
-import {DEFAULT_MAX_BYTES} from '../lib/questionnaireUploadPolicy';
+import {
+  DEFAULT_MAX_BYTES,
+  WORKER_PROXY_UPLOAD_MAX_BYTES,
+} from '../lib/questionnaireUploadPolicy';
 import {usePersistentForm} from '../hooks/usePersistentForm';
 
 type AnswerValue = string | string[];
@@ -65,6 +68,34 @@ function isLikelyFetchNetworkError(err: unknown): boolean {
     m.includes('networkerror') ||
     m.includes('network request failed')
   );
+}
+
+/** Same-origin multipart upload via Worker (avoids R2 CORS on direct PUT). */
+async function uploadThroughWorkerMultipart(
+  file: File,
+  batchId: string,
+  relativePath: string,
+): Promise<UploadedAsset> {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('batchId', batchId);
+  if (relativePath) fd.append('relativePath', relativePath);
+  let r: Response;
+  try {
+    r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
+  } catch (e) {
+    if (isLikelyFetchNetworkError(e)) {
+      throw new Error(
+        'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
+      );
+    }
+    throw e;
+  }
+  if (!r.ok) {
+    const b = (await r.json().catch(() => null)) as {error?: string} | null;
+    throw new Error(b?.error ?? 'Multipart upload failed.');
+  }
+  return (await r.json()) as UploadedAsset;
 }
 
 export default function Questionnaire() {
@@ -169,14 +200,27 @@ export default function Questionnaire() {
           headers: {'Content-Type': contentType},
         });
       } catch (e) {
+        if (
+          isLikelyFetchNetworkError(e) &&
+          file.size <= WORKER_PROXY_UPLOAD_MAX_BYTES
+        ) {
+          return await uploadThroughWorkerMultipart(file, batchId, relativePath);
+        }
         if (isLikelyFetchNetworkError(e)) {
           throw new Error(
-            'Could not upload to storage (browser blocked or network error). This is often fixed by adding your exact site origin to R2 bucket CORS (including www vs non-www). Try Chrome/Edge, or disable strict tracking protection for this site.',
+            `This file is about ${Math.round(file.size / (1024 * 1024))} MB; direct browser uploads need R2 CORS configured for this site's exact URL (www vs non-www). Ask Kicero to fix CORS, use a smaller file (under ${Math.round(WORKER_PROXY_UPLOAD_MAX_BYTES / (1024 * 1024))} MB can upload via the site instead), or try Chrome/Edge.`,
           );
         }
         throw e;
       }
       if (!put.ok) {
+        if (file.size <= WORKER_PROXY_UPLOAD_MAX_BYTES) {
+          try {
+            return await uploadThroughWorkerMultipart(file, batchId, relativePath);
+          } catch {
+            /* prefer HTTP status message below */
+          }
+        }
         throw new Error(
           `Upload failed for "${file.name}" (${put.status}). If this persists, ask Kicero to check R2 CORS settings.`,
         );
@@ -197,25 +241,7 @@ export default function Questionnaire() {
     };
 
     if (init.status === 501 && errJson.fallback) {
-      const fd = new FormData();
-      fd.append('file', file);
-      if (relativePath) fd.append('relativePath', relativePath);
-      let r: Response;
-      try {
-        r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
-      } catch (e) {
-        if (isLikelyFetchNetworkError(e)) {
-          throw new Error(
-            'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
-          );
-        }
-        throw e;
-      }
-      if (!r.ok) {
-        const b = (await r.json().catch(() => null)) as {error?: string} | null;
-        throw new Error(b?.error ?? 'Multipart upload failed.');
-      }
-      return (await r.json()) as UploadedAsset;
+      return await uploadThroughWorkerMultipart(file, batchId, relativePath);
     }
 
     throw new Error(errJson.error ?? 'Could not start upload.');

@@ -242,6 +242,12 @@ app.post('/api/questionnaire/upload', uploadDisk.single('file'), async (req, res
 
   const relativePath =
     typeof req.body?.relativePath === 'string' ? req.body.relativePath.trim() : '';
+  const batchId =
+    typeof req.body?.batchId === 'string' ? req.body.batchId.trim() : '';
+  if (batchId && !/^[a-f0-9-]{36}$/i.test(batchId)) {
+    await fs.unlink(file.path).catch(() => null);
+    return res.status(400).json({error: 'batchId must be a UUID.'});
+  }
   const displayName = relativePath || file.originalname;
 
   const v = assertAllowedUpload({

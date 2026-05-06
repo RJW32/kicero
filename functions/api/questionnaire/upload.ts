@@ -1,4 +1,4 @@
-import {assertAllowedUpload} from '../../../src/lib/questionnaireUploadPolicy';
+import {assertAllowedUpload, buildObjectKey} from '../../../src/lib/questionnaireUploadPolicy';
 
 interface Env {
   R2_BUCKET: R2Bucket;
@@ -34,29 +34,59 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return jsonResponse({error: 'Expected file upload.'}, 400);
   }
 
+  const batchIdRaw =
+    typeof formData?.get('batchId') === 'string'
+      ? (formData.get('batchId') as string).trim()
+      : '';
+  const relativePathRaw =
+    typeof formData?.get('relativePath') === 'string'
+      ? (formData.get('relativePath') as string).trim()
+      : '';
+
+  const relativePath = relativePathRaw?.length ? relativePathRaw : undefined;
+
+  let batchId: string | undefined;
+  if (batchIdRaw) {
+    if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
+      return jsonResponse({error: 'batchId must be a UUID so folder uploads stay grouped.'}, 400);
+    }
+    batchId = batchIdRaw;
+  }
+
+  const contentType = file.type || 'application/octet-stream';
+
   const v = assertAllowedUpload({
     filename: file.name,
-    contentType: file.type || 'application/octet-stream',
+    contentType,
     size: file.size,
+    relativePath,
   });
   if (v.error) {
     return jsonResponse({error: v.error}, 400);
   }
 
-  const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key = `submissions/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeFilename}`;
-  await context.env.R2_BUCKET.put(key, await file.arrayBuffer(), {
-    httpMetadata: {contentType: file.type || 'application/octet-stream'},
+  const key = batchId
+    ? buildObjectKey({
+        filename: file.name,
+        relativePath,
+        submissionId: batchId,
+      })
+    : `submissions/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+  await context.env.R2_BUCKET.put(key, file.stream(), {
+    httpMetadata: {contentType},
   });
 
   const base = (context.env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
   const url = base ? `${base}/${key}` : key;
+  const displayName = relativePath?.length ? relativePath : file.name;
 
   return jsonResponse({
     key,
     url,
-    filename: file.name,
+    filename: displayName,
     size: file.size,
-    contentType: file.type || 'application/octet-stream',
+    contentType,
+    ...(relativePath ? {relativePath} : {}),
   });
 };

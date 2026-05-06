@@ -78,18 +78,26 @@ function startPreviewServer() {
   proc.stderr.on('data', (chunk) => {
     process.stderr.write(`[preview] ${chunk}`);
   });
+  // Don't let the piped stdio keep our event loop alive once we've signalled
+  // the child to exit (Cloudflare's build runner has been hanging here).
+  proc.stdout?.unref?.();
+  proc.stderr?.unref?.();
+  proc.unref?.();
 
   return proc;
 }
 
-async function stopPreviewServer(proc, graceMs = 5_000) {
-  if (!proc || proc.exitCode !== null) return;
+async function stopPreviewServer(proc, graceMs = 3_000) {
+  if (!proc || proc.exitCode !== null || proc.killed) return;
 
   const exited = new Promise((resolve) => {
     proc.once('exit', () => resolve());
+    proc.once('close', () => resolve());
   });
 
-  proc.kill('SIGTERM');
+  try {
+    proc.kill('SIGTERM');
+  } catch {}
 
   const timedOut = await Promise.race([
     exited.then(() => false),
@@ -97,8 +105,34 @@ async function stopPreviewServer(proc, graceMs = 5_000) {
   ]);
 
   if (timedOut && proc.exitCode === null) {
-    proc.kill('SIGKILL');
-    await exited;
+    try {
+      proc.kill('SIGKILL');
+    } catch {}
+    await Promise.race([exited, sleep(2_000)]);
+  }
+}
+
+async function closeBrowserSafely(browser, timeoutMs = 8_000) {
+  if (!browser) return;
+  try {
+    await Promise.race([
+      browser.close(),
+      sleep(timeoutMs).then(() => {
+        throw new Error('browser.close() timed out');
+      }),
+    ]);
+  } catch (err) {
+    console.warn(
+      `[prerender] browser.close() failed: ${
+        err instanceof Error ? err.message : String(err)
+      } - falling back to killing the browser process`,
+    );
+    try {
+      const proc = browser.process?.();
+      if (proc && proc.exitCode === null) {
+        proc.kill('SIGKILL');
+      }
+    } catch {}
   }
 }
 
@@ -202,14 +236,26 @@ async function main() {
       await writeFile(join(distDir, 'sitemap.xml'), sitemap, 'utf-8');
       console.log('  wrote dist/sitemap.xml');
     } finally {
-      await browser.close();
+      await closeBrowserSafely(browser);
     }
   } finally {
     await stopPreviewServer(previewProc);
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Hard-exit safety net: if anything (Chromium subprocesses, dangling sockets,
+// piped stdio) keeps the event loop alive after main() resolves, Cloudflare
+// will eventually time the build out. We've written every artifact we need
+// to disk by the time main() resolves successfully, so it's safe to force-exit.
+const HARD_EXIT_MS = 10_000;
+
+main()
+  .then(() => {
+    setTimeout(() => process.exit(0), HARD_EXIT_MS).unref();
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error(err);
+    setTimeout(() => process.exit(1), HARD_EXIT_MS).unref();
+    process.exit(1);
+  });

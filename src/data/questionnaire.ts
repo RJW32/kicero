@@ -157,8 +157,11 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     id: 'brandAssets',
     section: 'Images & Visuals',
     label: 'Images and videos for your website',
-    description:
-      'Upload any images or videos you want on your website. If you want an image or video in a specific place on the site, name the file after that location — for example AboutPageDirectorsPicture.png. Any images or videos you need and 100% want on your website should begin with the number 1 — for example 1HomePageMainVideo.mp4.',
+    description: [
+      'Upload images and video you would like used on your site.',
+      'Naming: where placement matters, use a clear filename (for example, AboutLeadershipPhoto.jpg).',
+      'Priority: prefix must-have files with 1 so they stand out (for example, 1HomeHero.mp4).',
+    ].join('\n'),
     type: 'files',
     optional: true,
     accept: 'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
@@ -170,3 +173,14 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
 export const questionnaireQuestionMap = new Map(
   questionnaireQuestions.map((question) => [question.id, question]),
 );
+
+/** Ordered wizard steps — each entry is section key(s); Colour + Fonts stay on one step. */
+export const questionnaireStepSections: string[][] = [
+  ['Business Basics'],
+  ['Brand & Style'],
+  ['Colour Preferences', 'Fonts'],
+  ['Pages'],
+  ['User Experience Preferences'],
+  ['Final Notes'],
+  ['Images & Visuals'],
+];

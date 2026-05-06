@@ -59,8 +59,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     : [];
 
   if (website) return jsonResponse({ok: true}, 200);
-  if (!clientName || !emailRegex.test(clientEmail)) {
-    return jsonResponse({error: 'Valid client name and email are required.'}, 400);
+
+  const hasClientEmail = emailRegex.test(clientEmail);
+
+  if (!clientName) {
+    return jsonResponse({error: 'Please provide your name.'}, 400);
   }
 
   const sendgridKey = context.env.SENDGRID_API_KEY;
@@ -93,15 +96,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     : '\n\nUploaded files:\n- None';
 
   const subject = `Questionnaire: ${clientName}${ref ? ` [${ref}]` : ''}`;
+  const internalNotice = [
+    `New questionnaire submission`,
+    ``,
+    `Client name: ${clientName}`,
+    `Client email: ${hasClientEmail ? clientEmail : 'Not provided'}`,
+    `Ref: ${ref || '—'}`,
+    ``,
+    sectionText.trim(),
+    '',
+    filesText.trim(),
+  ].join('\n');
   const payload = {
     personalizations: [{to: [{email: toEmail}]}],
     from: {email: fromEmail, name: fromName},
-    reply_to: {email: clientEmail},
+    ...(hasClientEmail ? {reply_to: {email: clientEmail}} : {}),
     subject,
     content: [
       {
         type: 'text/plain',
-        value: `New questionnaire submission\n\nClient name: ${clientName}\nClient email: ${clientEmail}\nRef: ${ref || '—'}\n\n${sectionText}${filesText}`,
+        value: internalNotice,
       },
       {
         type: 'text/html',
@@ -122,25 +136,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return jsonResponse({error: 'Email provider request failed.'}, 502);
   }
 
-  await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${sendgridKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      personalizations: [{to: [{email: clientEmail}]}],
-      from: {email: fromEmail, name: 'Kicero'},
-      subject: "We've received your questionnaire - Kicero",
-      content: [
-        {
-          type: 'text/plain',
-          value:
-            'Thanks for completing our website questionnaire. We will review your answers and reply within 24 hours.',
-        },
-      ],
-    }),
-  }).catch(() => null);
+  if (hasClientEmail) {
+    await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sendgridKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{to: [{email: clientEmail}]}],
+        from: {email: fromEmail, name: 'Kicero'},
+        subject: "We've received your questionnaire - Kicero",
+        content: [
+          {
+            type: 'text/plain',
+            value:
+              'Thanks for completing our website questionnaire. Kicero will be in touch.',
+          },
+        ],
+      }),
+    }).catch(() => null);
+  }
 
   return jsonResponse({ok: true}, 200);
 };

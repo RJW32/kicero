@@ -282,8 +282,11 @@ app.post('/api/questionnaire', async (req, res) => {
     : [];
 
   if (website) return res.status(200).json({ok: true});
-  if (!clientName || !emailRegex.test(clientEmail)) {
-    return res.status(400).json({error: 'Valid client name and email are required.'});
+
+  const hasClientEmail = emailRegex.test(clientEmail);
+
+  if (!clientName) {
+    return res.status(400).json({error: 'Please provide your name.'});
   }
 
   const config = getConfig();
@@ -315,20 +318,25 @@ app.post('/api/questionnaire', async (req, res) => {
     : '\n\nUploaded files:\n- None';
   const subject = `Questionnaire: ${clientName}${ref ? ` [${ref}]` : ''}`;
 
+  const internalNotice = `New questionnaire submission\n\nClient name: ${clientName}\nClient email: ${hasClientEmail ? clientEmail : 'Not provided'}\nRef: ${ref || '—'}\n\n${sectionText}${filesText}`;
   const sendgridPayload = {
     personalizations: [{to: [{email: config.CONTACT_TO_EMAIL}]}],
     from: {
       email: config.CONTACT_FROM_EMAIL,
       name: config.CONTACT_FROM_NAME,
     },
-    reply_to: {
-      email: clientEmail,
-    },
+    ...(hasClientEmail
+      ? {
+          reply_to: {
+            email: clientEmail,
+          },
+        }
+      : {}),
     subject,
     content: [
       {
         type: 'text/plain',
-        value: `New questionnaire submission\n\nClient name: ${clientName}\nClient email: ${clientEmail}\nRef: ${ref || '—'}\n\n${sectionText}${filesText}`,
+        value: internalNotice,
       },
       {
         type: 'text/html',
@@ -353,29 +361,31 @@ app.post('/api/questionnaire', async (req, res) => {
     return res.status(502).json({error: 'Failed to reach email provider.'});
   }
 
-  const autoReplyPayload = {
-    personalizations: [{to: [{email: clientEmail}]}],
-    from: {
-      email: config.CONTACT_FROM_EMAIL,
-      name: 'Kicero',
-    },
-    subject: "We've received your questionnaire - Kicero",
-    content: [
-      {
-        type: 'text/plain',
-        value:
-          'Thanks for completing our website questionnaire. We will review your answers and reply within 24 hours.',
+  if (hasClientEmail) {
+    const autoReplyPayload = {
+      personalizations: [{to: [{email: clientEmail}]}],
+      from: {
+        email: config.CONTACT_FROM_EMAIL,
+        name: 'Kicero',
       },
-    ],
-  };
-  await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.SENDGRID_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(autoReplyPayload),
-  }).catch(() => null);
+      subject: "We've received your questionnaire - Kicero",
+      content: [
+        {
+          type: 'text/plain',
+          value:
+            'Thanks for completing our website questionnaire. Kicero will be in touch.',
+        },
+      ],
+    };
+    await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.SENDGRID_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(autoReplyPayload),
+    }).catch(() => null);
+  }
 
   return res.status(200).json({ok: true});
 });

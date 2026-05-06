@@ -4,6 +4,7 @@ main = "worker.ts"
 compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
+R2_ACCOUNT_ID = "518ebe3454726f8ad23f5c25cc01f13e"
 R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
 R2_BUCKET_NAME = "kicero-questionnaire-uploads"
 CONTACT_TO_EMAIL = "info@kicero.co.uk"

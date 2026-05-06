@@ -1,7 +1,7 @@
 import {
   type ChangeEvent,
   type FormEvent,
-  useMemo,
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -9,6 +9,7 @@ import {useSearchParams} from 'react-router-dom';
 import {motion} from 'motion/react';
 import {
   questionnaireQuestions,
+  questionnaireStepSections,
   type FileQuestion,
   type QuestionnaireQuestion,
 } from '../data/questionnaire';
@@ -28,14 +29,12 @@ interface UploadedAsset {
 
 interface FormModel {
   clientName: string;
-  clientEmail: string;
   answers: Record<string, AnswerValue>;
   files: UploadedAsset[];
 }
 
 const EMPTY_FORM: FormModel = {
   clientName: '',
-  clientEmail: '',
   answers: {},
   files: [],
 };
@@ -70,7 +69,14 @@ export default function Questionnaire() {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const sections = useMemo(() => Object.entries(groupedQuestions), []);
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const totalSteps = questionnaireStepSections.length;
+  const progressFraction = totalSteps ? (stepIndex + 1) / totalSteps : 1;
+
+  useEffect(() => {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }, [stepIndex]);
 
   const filesQuestion = questionnaireQuestions.find((q) => q.type === 'files') as
     | FileQuestion
@@ -218,10 +224,9 @@ export default function Questionnaire() {
     setValue((prev) => ({...prev, files: prev.files.filter((file) => file.key !== key)}));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!value.clientName.trim() || !value.clientEmail.trim()) {
-      setError('Please add your name and email so we can contact you.');
+  const submitQuestionnaire = async () => {
+    if (!value.clientName.trim()) {
+      setError('Please add your name so we can reach you.');
       return;
     }
     setStatus('submitting');
@@ -232,7 +237,7 @@ export default function Questionnaire() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           clientName: value.clientName.trim(),
-          clientEmail: value.clientEmail.trim(),
+          clientEmail: '',
           ref,
           answers: value.answers,
           files: value.files,
@@ -246,6 +251,7 @@ export default function Questionnaire() {
       setStatus('success');
       clear();
       resetBatchId();
+      setStepIndex(0);
     } catch (submitErr) {
       setStatus('idle');
       if (isNetworkConnectionError(submitErr)) {
@@ -256,6 +262,16 @@ export default function Questionnaire() {
         setError(submitErr instanceof Error ? submitErr.message : 'Submission failed.');
       }
     }
+  };
+
+  const handleFormSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (stepIndex < totalSteps - 1) {
+      setError('');
+      setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
+      return;
+    }
+    await submitQuestionnaire();
   };
 
   return (
@@ -278,6 +294,7 @@ export default function Questionnaire() {
               onClick={() => {
                 clear();
                 resetBatchId();
+                setStepIndex(0);
                 setRestored(false);
               }}
               className="ml-3 underline"
@@ -290,77 +307,127 @@ export default function Questionnaire() {
         {status === 'success' ? (
           <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="border p-8">
             <h2 className="text-2xl font-bold mb-3">Thanks, your questionnaire is submitted.</h2>
-            <p className="text-brand-gray-600">We will review this and get back to you within 24 hours.</p>
+            <p className="text-brand-gray-600">Kicero will be in touch.</p>
           </motion.div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-6">
-              <Field
-                label="Your name"
-                value={value.clientName}
-                onChange={(next) => setValue((prev) => ({...prev, clientName: next}))}
-                required
-              />
-              <Field
-                label="Your email"
-                type="email"
-                value={value.clientEmail}
-                onChange={(next) => setValue((prev) => ({...prev, clientEmail: next}))}
-                required
+          <form onSubmit={handleFormSubmit} className="space-y-8">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4 text-sm text-brand-gray-600">
+                <span>
+                  Step {stepIndex + 1} of {totalSteps}
+                </span>
+                <span className="tabular-nums">{Math.round(progressFraction * 100)}%</span>
+              </div>
+              <div
+                className="h-3 rounded-full bg-brand-gray-200 overflow-hidden shadow-inner"
+                role="progressbar"
+                aria-valuemin={1}
+                aria-valuemax={totalSteps}
+                aria-valuenow={stepIndex + 1}
+                aria-label="Questionnaire progress"
+              >
+                <div
+                  className="h-full bg-brand-black transition-[width] duration-300 ease-out rounded-full"
+                  style={{width: `${progressFraction * 100}%`}}
+                />
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={totalSteps}
+                step={1}
+                value={stepIndex + 1}
+                disabled
+                className="w-full h-2 accent-brand-black"
+                aria-hidden
               />
             </div>
 
-            {sections.map(([section, questions]) => (
-              <div key={section} className="border p-6">
-                <h2 className="font-bold text-xl mb-4">{section}</h2>
-                <div className="space-y-5">
-                  {questions.map((question) => (
-                    <div key={question.id}>
-                      <label className="block text-sm font-semibold mb-2">
-                        {question.label}
-                        {question.optional !== false && (
-                          <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
-                        )}
-                      </label>
-                      {question.description && (
-                        <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl">
-                          {question.description}
-                        </p>
-                      )}
-                      {question.type === 'files' ? (
-                        <FilesField
-                          accept={acceptUploads}
-                          disabled={uploading}
-                          files={value.files}
-                          maxFiles={maxFiles}
-                          onRemove={removeFile}
-                          onChangeFiles={uploadFiles}
-                          onChangeFolder={uploadFiles}
-                        />
-                      ) : (
-                        renderQuestion(
-                          question,
-                          value.answers[question.id],
-                          setAnswer,
-                          handleCheckToggle,
-                        )
-                      )}
-                    </div>
-                  ))}
+            <div className="border p-6 space-y-10">
+              {stepIndex === 0 && (
+                <div className="max-w-xl">
+                  <Field
+                    label="Your name"
+                    value={value.clientName}
+                    onChange={(next) => setValue((prev) => ({...prev, clientName: next}))}
+                    required
+                  />
                 </div>
-              </div>
-            ))}
+              )}
+
+              {(questionnaireStepSections[stepIndex] ?? []).map((sectionKey) => {
+                const questions = groupedQuestions[sectionKey] ?? [];
+                if (questions.length === 0) return null;
+                return (
+                  <div key={sectionKey} className="space-y-5">
+                    <h2 className="font-bold text-xl border-b border-brand-gray-200 pb-2">
+                      {sectionKey}
+                    </h2>
+                    {questions.map((question) => (
+                      <div key={question.id}>
+                        <label className="block text-sm font-semibold mb-2">
+                          {question.label}
+                          {question.optional !== false && (
+                            <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+                          )}
+                        </label>
+                        {question.description && (
+                          <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
+                            {question.description}
+                          </p>
+                        )}
+                        {question.type === 'files' ? (
+                          <FilesField
+                            accept={acceptUploads}
+                            disabled={uploading}
+                            files={value.files}
+                            maxFiles={maxFiles}
+                            onRemove={removeFile}
+                            onChangeFiles={uploadFiles}
+                            onChangeFolder={uploadFiles}
+                          />
+                        ) : (
+                          renderQuestion(
+                            question,
+                            value.answers[question.id],
+                            setAnswer,
+                            handleCheckToggle,
+                          )
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
 
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" />
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={status === 'submitting' || uploading}
-              className="w-full py-4 bg-brand-black text-white uppercase tracking-widest disabled:opacity-60"
-            >
-              {status === 'submitting' ? 'Submitting...' : 'Submit Questionnaire'}
-            </button>
+            <div className="flex flex-col-reverse sm:flex-row gap-4 sm:justify-between sm:items-center">
+              <button
+                type="button"
+                disabled={stepIndex === 0}
+                onClick={() => {
+                  setError('');
+                  setStepIndex((i) => Math.max(0, i - 1));
+                }}
+                className="py-4 px-6 border border-brand-black uppercase tracking-widest disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Previous
+              </button>
+              <button
+                type="submit"
+                disabled={status === 'submitting' || uploading}
+                className="py-4 px-8 bg-brand-black text-white uppercase tracking-widest disabled:opacity-60 shrink-0"
+              >
+                {stepIndex >= totalSteps - 1
+                  ? status === 'submitting'
+                    ? 'Submitting...'
+                    : 'Submit questionnaire'
+                  : 'Next'}
+              </button>
+            </div>
           </form>
         )}
       </div>

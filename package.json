@@ -10,6 +10,8 @@
     "dev:full": "tsx server.ts & vite --port=3000 --host=0.0.0.0",
     "cf:login": "wrangler login",
     "cf:secret:sendgrid": "wrangler secret put SENDGRID_API_KEY --name kicero",
+    "cf:secret:r2-access-key-id": "wrangler secret put R2_ACCESS_KEY_ID --name kicero",
+    "cf:secret:r2-secret-access-key": "wrangler secret put R2_SECRET_ACCESS_KEY --name kicero",
     "cf:deploy": "npm run build && wrangler deploy",
     "build": "vite build && npm run prerender",
     "build:spa": "vite build",

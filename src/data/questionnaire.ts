@@ -4,6 +4,8 @@ export interface BaseQuestion {
   id: string;
   section: string;
   label: string;
+  /** Shown below the label (e.g. upload instructions). */
+  description?: string;
   optional?: boolean;
 }
 
@@ -60,7 +62,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     section: 'Brand & Style',
     label: 'Do you already have a logo?',
     type: 'radio',
-    options: ['Yes', 'No', 'Need help with logo'],
+    options: ['Yes', 'No'],
     optional: true,
   },
   {
@@ -93,14 +95,6 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     optional: true,
   },
   {
-    id: 'lookFeel',
-    section: 'Colour Preferences',
-    label: 'Overall look',
-    type: 'radio',
-    options: ['Light and clean', 'Dark and bold', 'Not sure yet'],
-    optional: true,
-  },
-  {
     id: 'fontPreference',
     section: 'Fonts',
     label: 'Any font preferences?',
@@ -112,34 +106,8 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     section: 'Pages',
     label: 'Pages you would like',
     type: 'checkbox',
-    options: ['Home', 'About', 'Services', 'Pricing', 'Portfolio / Gallery', 'Testimonials', 'FAQ', 'Contact', 'Blog / News'],
+    options: ['Home', 'About', 'Services', 'Pricing', 'Portfolio / Gallery', 'Testimonials', 'FAQ', 'Contact'],
     optional: true,
-  },
-  {
-    id: 'hasPhotos',
-    section: 'Images & Visuals',
-    label: 'Do you have your own photos?',
-    type: 'radio',
-    options: ['Yes', 'No', 'Some'],
-    optional: true,
-  },
-  {
-    id: 'imageStyle',
-    section: 'Images & Visuals',
-    label: 'Preferred image style',
-    type: 'checkbox',
-    options: ['Real photos', 'Product-focused', 'Illustrations/icons', 'Unsure'],
-    optional: true,
-  },
-  {
-    id: 'brandAssets',
-    section: 'Images & Visuals',
-    label: 'Upload logo or brand assets',
-    type: 'files',
-    optional: true,
-    accept: 'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
-    maxFiles: 100,
-    maxSizeMB: 500,
   },
   {
     id: 'homepageNeeds',
@@ -160,29 +128,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     section: 'User Experience Preferences',
     label: 'Is mobile-friendly design important?',
     type: 'radio',
-    options: ['Very important', 'Important', 'Not sure'],
-    optional: true,
-  },
-  {
-    id: 'timeline',
-    section: 'Timeline & Budget',
-    label: 'Ideal launch date',
-    type: 'text',
-    optional: true,
-  },
-  {
-    id: 'budget',
-    section: 'Timeline & Budget',
-    label: 'Budget range',
-    type: 'text',
-    optional: true,
-  },
-  {
-    id: 'contactMethod',
-    section: 'Timeline & Budget',
-    label: 'Best contact method',
-    type: 'radio',
-    options: ['Email', 'WhatsApp', 'Call'],
+    options: ['Important', 'Not important'],
     optional: true,
   },
   {
@@ -198,6 +144,26 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     label: 'Anything else you want included?',
     type: 'textarea',
     optional: true,
+  },
+  {
+    id: 'hasPhotos',
+    section: 'Images & Visuals',
+    label: 'Do you have your own photos?',
+    type: 'radio',
+    options: ['Yes', 'No', 'Some'],
+    optional: true,
+  },
+  {
+    id: 'brandAssets',
+    section: 'Images & Visuals',
+    label: 'Images and videos for your website',
+    description:
+      'Upload any images or videos you want on your website. If you want an image or video in a specific place on the site, name the file after that location — for example AboutPageDirectorsPicture.png. Any images or videos you need and 100% want on your website should begin with the number 1 — for example 1HomePageMainVideo.mp4.',
+    type: 'files',
+    optional: true,
+    accept: 'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
+    maxFiles: 100,
+    maxSizeMB: 500,
   },
 ];
 

@@ -265,10 +265,6 @@ export default function Questionnaire() {
           Website Questionnaire
         </h1>
         <p className="text-brand-gray-600 mb-2">Takes ~3 minutes. All questions optional.</p>
-        <p className="text-sm text-brand-gray-500 mb-4 max-w-2xl">
-          Uploads go straight to secure storage in the background — you stay on this page (no separate
-          upload site). Large videos and project folders are supported.
-        </p>
         {ref && (
           <p className="inline-block text-xs uppercase tracking-widest bg-brand-black text-white px-3 py-1 mb-4">
             Ref: {ref}
@@ -326,6 +322,11 @@ export default function Questionnaire() {
                           <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
                         )}
                       </label>
+                      {question.description && (
+                        <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl">
+                          {question.description}
+                        </p>
+                      )}
                       {question.type === 'files' ? (
                         <FilesField
                           accept={acceptUploads}

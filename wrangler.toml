@@ -1,9 +1,11 @@
 name = "kicero"
 compatibility_date = "2026-05-01"
 main = "worker.ts"
+compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
 R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
+R2_BUCKET_NAME = "kicero-questionnaire-uploads"
 CONTACT_TO_EMAIL = "info@kicero.co.uk"
 CONTACT_FROM_EMAIL = "noreply@kicero.co.uk"
 CONTACT_FROM_NAME = "Kicero Website Questionnaire"

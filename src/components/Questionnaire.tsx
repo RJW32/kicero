@@ -1,7 +1,18 @@
-import {type ChangeEvent, type FormEvent, useMemo, useState} from 'react';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {motion} from 'motion/react';
-import {questionnaireQuestions, type QuestionnaireQuestion} from '../data/questionnaire';
+import {
+  questionnaireQuestions,
+  type FileQuestion,
+  type QuestionnaireQuestion,
+} from '../data/questionnaire';
+import {DEFAULT_MAX_BYTES} from '../lib/questionnaireUploadPolicy';
 import {usePersistentForm} from '../hooks/usePersistentForm';
 
 type AnswerValue = string | string[];
@@ -12,6 +23,7 @@ interface UploadedAsset {
   filename: string;
   size: number;
   contentType: string;
+  relativePath?: string;
 }
 
 interface FormModel {
@@ -37,9 +49,20 @@ const groupedQuestions = questionnaireQuestions.reduce<Record<string, Questionna
   {},
 );
 
+function getWebkitRelativePath(file: File): string {
+  const w = (file as File & {webkitRelativePath?: string}).webkitRelativePath;
+  if (typeof w === 'string' && w.length > 0 && w !== file.name) return w;
+  return '';
+}
+
+function isNetworkConnectionError(err: unknown): boolean {
+  return err instanceof TypeError && /fetch/i.test(err.message);
+}
+
 export default function Questionnaire() {
   const [searchParams] = useSearchParams();
   const ref = searchParams.get('ref')?.trim() ?? '';
+  const batchIdRef = useRef('');
   const {value, setValue, restored, clear, setRestored} = usePersistentForm<FormModel>(
     `kicero:questionnaire:${ref || 'default'}`,
     EMPTY_FORM,
@@ -48,6 +71,27 @@ export default function Questionnaire() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const sections = useMemo(() => Object.entries(groupedQuestions), []);
+
+  const filesQuestion = questionnaireQuestions.find((q) => q.type === 'files') as
+    | FileQuestion
+    | undefined;
+  const maxFiles = filesQuestion?.maxFiles ?? 100;
+  const maxBytesPerFile =
+    (filesQuestion?.maxSizeMB ?? Math.round(DEFAULT_MAX_BYTES / (1024 * 1024))) * 1024 * 1024;
+  const acceptUploads =
+    filesQuestion?.accept ??
+    'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx';
+
+  function ensureBatchId(): string {
+    if (!batchIdRef.current) {
+      batchIdRef.current = crypto.randomUUID();
+    }
+    return batchIdRef.current;
+  }
+
+  function resetBatchId() {
+    batchIdRef.current = crypto.randomUUID();
+  }
 
   const setAnswer = (id: string, next: AnswerValue) => {
     setValue((prev) => ({...prev, answers: {...prev.answers, [id]: next}}));
@@ -62,14 +106,82 @@ export default function Questionnaire() {
     setAnswer(id, next);
   };
 
-  const uploadFiles = async (e: ChangeEvent<HTMLInputElement>) => {
-    const question = questionnaireQuestions.find((item) => item.type === 'files');
-    const maxFiles = question?.type === 'files' ? (question.maxFiles ?? 10) : 10;
-    const selected = e.currentTarget.files;
-    if (!selected || selected.length === 0) return;
-    if (value.files.length + selected.length > maxFiles) {
+  const uploadSingleFile = async (file: File): Promise<UploadedAsset> => {
+    if (file.size > maxBytesPerFile) {
+      throw new Error(
+        `File "${file.name}" exceeds the ${Math.round(maxBytesPerFile / (1024 * 1024))} MB limit.`,
+      );
+    }
+
+    const relativePath = getWebkitRelativePath(file);
+    const contentType = file.type || 'application/octet-stream';
+    const batchId = ensureBatchId();
+
+    const init = await fetch('/api/questionnaire/upload-url', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        batchId,
+        filename: file.name,
+        contentType,
+        size: file.size,
+        relativePath: relativePath || undefined,
+      }),
+    });
+
+    if (init.ok) {
+      const meta = (await init.json()) as {
+        putUrl: string;
+        key: string;
+        url: string;
+        filename: string;
+      };
+      const put = await fetch(meta.putUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {'Content-Type': contentType},
+      });
+      if (!put.ok) {
+        throw new Error(
+          `Upload failed for "${file.name}" (${put.status}). If this persists, ask Kicero to check R2 CORS settings.`,
+        );
+      }
+      return {
+        key: meta.key,
+        url: meta.url,
+        filename: meta.filename,
+        size: file.size,
+        contentType,
+        relativePath: relativePath || undefined,
+      };
+    }
+
+    const errJson = (await init.json().catch(() => ({}))) as {
+      error?: string;
+      fallback?: boolean;
+    };
+
+    if (init.status === 501 && errJson.fallback) {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (relativePath) fd.append('relativePath', relativePath);
+      const r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
+      if (!r.ok) {
+        const b = (await r.json().catch(() => null)) as {error?: string} | null;
+        throw new Error(b?.error ?? 'Multipart upload failed.');
+      }
+      return (await r.json()) as UploadedAsset;
+    }
+
+    throw new Error(errJson.error ?? 'Could not start upload.');
+  };
+
+  const processFileList = async (selected: FileList | File[]) => {
+    const list = Array.from(selected);
+    if (list.length === 0) return;
+
+    if (value.files.length + list.length > maxFiles) {
       setError(`You can upload up to ${maxFiles} files.`);
-      e.currentTarget.value = '';
       return;
     }
 
@@ -77,27 +189,29 @@ export default function Questionnaire() {
     setUploading(true);
     try {
       const newFiles: UploadedAsset[] = [];
-      for (const file of Array.from(selected)) {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch('/api/questionnaire/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as {error?: string} | null;
-          throw new Error(body?.error ?? 'Failed to upload file.');
-        }
-        const data = (await response.json()) as UploadedAsset;
-        newFiles.push(data);
+      for (const file of list) {
+        const asset = await uploadSingleFile(file);
+        newFiles.push(asset);
       }
       setValue((prev) => ({...prev, files: [...prev.files, ...newFiles]}));
     } catch (uploadErr) {
-      setError(uploadErr instanceof Error ? uploadErr.message : 'Upload failed.');
+      if (isNetworkConnectionError(uploadErr)) {
+        setError(
+          'Upload failed: API server is not reachable. Run `npm run dev` (starts frontend + API) and try again.',
+        );
+      } else {
+        setError(uploadErr instanceof Error ? uploadErr.message : 'Upload failed.');
+      }
     } finally {
       setUploading(false);
-      e.currentTarget.value = '';
     }
+  };
+
+  const uploadFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.currentTarget.files;
+    if (!selected?.length) return;
+    await processFileList(selected);
+    e.currentTarget.value = '';
   };
 
   const removeFile = (key: string) => {
@@ -131,9 +245,16 @@ export default function Questionnaire() {
       }
       setStatus('success');
       clear();
+      resetBatchId();
     } catch (submitErr) {
       setStatus('idle');
-      setError(submitErr instanceof Error ? submitErr.message : 'Submission failed.');
+      if (isNetworkConnectionError(submitErr)) {
+        setError(
+          'Submission failed: API server is not reachable. Run `npm run dev` and try again.',
+        );
+      } else {
+        setError(submitErr instanceof Error ? submitErr.message : 'Submission failed.');
+      }
     }
   };
 
@@ -144,6 +265,10 @@ export default function Questionnaire() {
           Website Questionnaire
         </h1>
         <p className="text-brand-gray-600 mb-2">Takes ~3 minutes. All questions optional.</p>
+        <p className="text-sm text-brand-gray-500 mb-4 max-w-2xl">
+          Uploads go straight to secure storage in the background — you stay on this page (no separate
+          upload site). Large videos and project folders are supported.
+        </p>
         {ref && (
           <p className="inline-block text-xs uppercase tracking-widest bg-brand-black text-white px-3 py-1 mb-4">
             Ref: {ref}
@@ -156,6 +281,7 @@ export default function Questionnaire() {
               type="button"
               onClick={() => {
                 clear();
+                resetBatchId();
                 setRestored(false);
               }}
               className="ml-3 underline"
@@ -200,32 +326,29 @@ export default function Questionnaire() {
                           <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
                         )}
                       </label>
-                      {renderQuestion(question, value.answers[question.id], setAnswer, handleCheckToggle)}
+                      {question.type === 'files' ? (
+                        <FilesField
+                          accept={acceptUploads}
+                          disabled={uploading}
+                          files={value.files}
+                          maxFiles={maxFiles}
+                          onRemove={removeFile}
+                          onChangeFiles={uploadFiles}
+                          onChangeFolder={uploadFiles}
+                        />
+                      ) : (
+                        renderQuestion(
+                          question,
+                          value.answers[question.id],
+                          setAnswer,
+                          handleCheckToggle,
+                        )
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-
-            <div className="border p-6">
-              <label className="block text-sm font-semibold mb-2">Upload logo or brand assets (optional)</label>
-              <input type="file" multiple onChange={uploadFiles} accept="image/*,.pdf,.zip,.doc,.docx" />
-              {uploading && <p className="text-sm mt-2">Uploading files...</p>}
-              {value.files.length > 0 && (
-                <ul className="mt-4 space-y-2 text-sm">
-                  {value.files.map((file) => (
-                    <li key={file.key} className="flex items-center justify-between border p-2">
-                      <a className="underline break-all" href={file.url} target="_blank" rel="noreferrer">
-                        {file.filename}
-                      </a>
-                      <button type="button" className="text-red-600" onClick={() => removeFile(file.key)}>
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
 
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" />
             {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -241,6 +364,75 @@ export default function Questionnaire() {
         )}
       </div>
     </section>
+  );
+}
+
+function FilesField({
+  accept,
+  disabled,
+  files,
+  maxFiles,
+  onChangeFiles,
+  onChangeFolder,
+  onRemove,
+}: {
+  accept: string;
+  disabled: boolean;
+  files: UploadedAsset[];
+  maxFiles: number;
+  onChangeFiles: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
+  onChangeFolder: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
+  onRemove: (key: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+        <label className="inline-flex items-center gap-2 text-sm border px-3 py-2 cursor-pointer bg-white">
+          <span className="font-semibold">Files</span>
+          <input
+            type="file"
+            multiple
+            accept={accept}
+            disabled={disabled}
+            onChange={onChangeFiles}
+            className="sr-only"
+          />
+          <span className="text-brand-gray-600">Choose files…</span>
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm border px-3 py-2 cursor-pointer bg-white">
+          <span className="font-semibold">Folder</span>
+          <input
+            type="file"
+            multiple
+            // @ts-expect-error non-standard attribute for directory picks (Chromium/Safari)
+            webkitdirectory=""
+            accept={accept}
+            disabled={disabled}
+            onChange={onChangeFolder}
+            className="sr-only"
+          />
+          <span className="text-brand-gray-600">Choose folder…</span>
+        </label>
+      </div>
+      <p className="text-xs text-brand-gray-500">
+        Up to {maxFiles} files; large videos supported. Folder upload works best in Chrome / Edge /
+        Safari.
+      </p>
+      {files.length > 0 && (
+        <ul className="mt-2 space-y-2 text-sm">
+          {files.map((file) => (
+            <li key={file.key} className="flex items-center justify-between border p-2 gap-2">
+              <a className="underline break-all min-w-0" href={file.url} target="_blank" rel="noreferrer">
+                {file.filename}
+              </a>
+              <button type="button" className="text-red-600 shrink-0" onClick={() => onRemove(file.key)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

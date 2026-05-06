@@ -2,8 +2,17 @@ import 'dotenv/config';
 import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
-import path from 'node:path';
 import {questionnaireQuestions} from './src/data/questionnaire';
+import {
+  assertAllowedUpload,
+  buildObjectKey,
+  DEFAULT_MAX_BYTES,
+} from './src/lib/questionnaireUploadPolicy';
+import {
+  getPresignedPutUrl,
+  hasR2SigningCredentials,
+  type R2SigningEnv,
+} from './src/lib/r2Presign';
 
 type ContactPayload = {
   name?: unknown;
@@ -25,7 +34,22 @@ const app = express();
 app.use(express.json({limit: '100kb'}));
 const port = Number(process.env.PORT ?? 8787);
 const localUploadDir = process.env.LOCAL_UPLOAD_DIR ?? 'uploads';
-const upload = multer({storage: multer.memoryStorage(), limits: {fileSize: 10 * 1024 * 1024}});
+
+const uploadDisk = multer({
+  storage: multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      await fs.mkdir(localUploadDir, {recursive: true});
+      cb(null, localUploadDir);
+    },
+    filename: (_req, file, cb) => {
+      const uniq = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${uniq}-${safe}`);
+    },
+  }),
+  limits: {fileSize: DEFAULT_MAX_BYTES},
+});
+
 app.use('/uploads', express.static(localUploadDir));
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,6 +76,15 @@ function getConfig() {
   }
 
   return {SENDGRID_API_KEY, CONTACT_TO_EMAIL, CONTACT_FROM_EMAIL, CONTACT_FROM_NAME};
+}
+
+function r2EnvFromProcess(): Partial<R2SigningEnv> {
+  return {
+    R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
+  };
 }
 
 app.post('/api/contact', async (req, res) => {
@@ -144,28 +177,92 @@ ${message}
   }
 });
 
-app.post('/api/questionnaire/upload', upload.single('file'), async (req, res) => {
+app.post('/api/questionnaire/upload-url', async (req, res) => {
+  const body = req.body ?? {};
+  const filename = typeof body.filename === 'string' ? body.filename : '';
+  const contentType =
+    typeof body.contentType === 'string' && body.contentType.length > 0
+      ? body.contentType
+      : 'application/octet-stream';
+  const size = typeof body.size === 'number' ? body.size : Number.NaN;
+  const relativePath =
+    typeof body.relativePath === 'string' ? body.relativePath.trim() : undefined;
+  const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';
+
+  if (!/^[a-f0-9-]{36}$/i.test(batchId)) {
+    return res
+      .status(400)
+      .json({error: 'batchId must be a UUID so folder uploads stay grouped.'});
+  }
+
+  const rel = relativePath?.length ? relativePath : undefined;
+  const v = assertAllowedUpload({filename, contentType, size, relativePath: rel});
+  if (v.error) return res.status(400).json({error: v.error});
+
+  const signingEnv = r2EnvFromProcess();
+  if (!hasR2SigningCredentials(signingEnv)) {
+    return res.status(501).json({
+      error: 'Direct upload to R2 is not configured in .env (use multipart fallback).',
+      fallback: true,
+    });
+  }
+
+  try {
+    const key = buildObjectKey({
+      filename,
+      relativePath: rel,
+      submissionId: batchId,
+    });
+    const putUrl = await getPresignedPutUrl(signingEnv, {
+      key,
+      contentType,
+      expiresIn: 3600,
+    });
+    const publicBase = (process.env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
+    const publicUrl = publicBase ? `${publicBase}/${key}` : key;
+    const displayName = rel?.length ? rel : filename;
+    return res.status(200).json({
+      putUrl,
+      key,
+      url: publicUrl,
+      filename: displayName,
+      expiresIn: 3600,
+    });
+  } catch {
+    return res.status(500).json({error: 'Could not create upload URL.'});
+  }
+});
+
+app.post('/api/questionnaire/upload', uploadDisk.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) {
     return res.status(400).json({error: 'Expected file upload.'});
   }
 
-  const allowedExtensions = /\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|doc|docx)$/i;
-  if (!allowedExtensions.test(file.originalname) && !file.mimetype.startsWith('image/')) {
-    return res.status(400).json({error: 'Unsupported file type.'});
+  const relativePath =
+    typeof req.body?.relativePath === 'string' ? req.body.relativePath.trim() : '';
+  const displayName = relativePath || file.originalname;
+
+  const v = assertAllowedUpload({
+    filename: file.originalname,
+    contentType: file.mimetype || 'application/octet-stream',
+    size: file.size,
+    relativePath: relativePath || undefined,
+  });
+  if (v.error) {
+    await fs.unlink(file.path).catch(() => null);
+    return res.status(400).json({error: v.error});
   }
 
-  const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key = `${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`;
-  await fs.mkdir(localUploadDir, {recursive: true});
-  await fs.writeFile(path.join(localUploadDir, key), file.buffer);
+  const key = file.filename;
 
   return res.status(200).json({
     key,
-    url: `http://localhost:${port}/uploads/${key}`,
-    filename: file.originalname,
+    url: `http://localhost:${port}/uploads/${encodeURI(key)}`,
+    filename: displayName,
     size: file.size,
-    contentType: file.mimetype,
+    contentType: file.mimetype || 'application/octet-stream',
+    relativePath: relativePath || undefined,
   });
 });
 

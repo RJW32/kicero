@@ -1,3 +1,5 @@
+import {assertAllowedUpload} from '../../../src/lib/questionnaireUploadPolicy';
+
 interface Env {
   R2_BUCKET: R2Bucket;
   R2_PUBLIC_BASE?: string;
@@ -32,13 +34,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return jsonResponse({error: 'Expected file upload.'}, 400);
   }
 
-  if (file.size > 10 * 1024 * 1024) {
-    return jsonResponse({error: 'File exceeds 10MB limit.'}, 400);
-  }
-
-  const allowedExtensions = /\.(jpg|jpeg|png|gif|webp|svg|pdf|zip|doc|docx)$/i;
-  if (!allowedExtensions.test(file.name) && !file.type.startsWith('image/')) {
-    return jsonResponse({error: 'Unsupported file type.'}, 400);
+  const v = assertAllowedUpload({
+    filename: file.name,
+    contentType: file.type || 'application/octet-stream',
+    size: file.size,
+  });
+  if (v.error) {
+    return jsonResponse({error: v.error}, 400);
   }
 
   const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');

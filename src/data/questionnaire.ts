@@ -137,9 +137,9 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     label: 'Upload logo or brand assets',
     type: 'files',
     optional: true,
-    accept: 'image/*,.pdf,.zip,.doc,.docx',
-    maxFiles: 10,
-    maxSizeMB: 10,
+    accept: 'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
+    maxFiles: 100,
+    maxSizeMB: 500,
   },
   {
     id: 'homepageNeeds',

@@ -82,6 +82,26 @@ function startPreviewServer() {
   return proc;
 }
 
+async function stopPreviewServer(proc, graceMs = 5_000) {
+  if (!proc || proc.exitCode !== null) return;
+
+  const exited = new Promise((resolve) => {
+    proc.once('exit', () => resolve());
+  });
+
+  proc.kill('SIGTERM');
+
+  const timedOut = await Promise.race([
+    exited.then(() => false),
+    sleep(graceMs).then(() => true),
+  ]);
+
+  if (timedOut && proc.exitCode === null) {
+    proc.kill('SIGKILL');
+    await exited;
+  }
+}
+
 async function waitForServer(url, proc, timeoutMs = 60_000) {
   const start = Date.now();
   let lastError;
@@ -185,7 +205,7 @@ async function main() {
       await browser.close();
     }
   } finally {
-    previewProc.kill();
+    await stopPreviewServer(previewProc);
   }
 }
 

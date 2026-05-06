@@ -2,8 +2,18 @@ name = "kicero"
 compatibility_date = "2026-05-01"
 main = "worker.ts"
 
+[vars]
+R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
+CONTACT_TO_EMAIL = "info@kicero.co.uk"
+CONTACT_FROM_EMAIL = "noreply@kicero.co.uk"
+CONTACT_FROM_NAME = "Kicero Website Questionnaire"
+
 [assets]
 directory = "dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 html_handling = "auto-trailing-slash"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "kicero-questionnaire-uploads"

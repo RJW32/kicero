@@ -18,6 +18,7 @@ const BlogIndex = lazy(() => import('./pages/BlogIndex'));
 const BlogArticle = lazy(() => import('./pages/BlogArticle'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
+const QuestionnairePage = lazy(() => import('./pages/QuestionnairePage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function ScrollToTop() {
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/blog/:slug" element={<BlogArticle />} />
+              <Route path="/questionnaire" element={<QuestionnairePage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFoundPage />} />

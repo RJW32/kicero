@@ -54,6 +54,13 @@ export const pageMeta: Record<string, PageMeta> = {
     keywords:
       'small business website blog, web design tips uk, website cost guide, scottish web design blog',
   },
+  questionnaire: {
+    title: 'Website Questionnaire | Kicero',
+    description:
+      'Complete this short website questionnaire so we can understand your goals, style, and content needs.',
+    path: '/questionnaire',
+    noindex: true,
+  },
   privacy: {
     title: 'Privacy Policy | Kicero',
     description:

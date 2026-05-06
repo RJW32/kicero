@@ -54,8 +54,17 @@ function getWebkitRelativePath(file: File): string {
   return '';
 }
 
-function isNetworkConnectionError(err: unknown): boolean {
-  return err instanceof TypeError && /fetch/i.test(err.message);
+/** Safari/WebKit often uses "Load failed" instead of "Failed to fetch". */
+function isLikelyFetchNetworkError(err: unknown): boolean {
+  if (!(err instanceof TypeError)) return false;
+  const m = err.message.toLowerCase();
+  return (
+    /fetch/i.test(m) ||
+    m.includes('load failed') ||
+    m.includes('failed to fetch') ||
+    m.includes('networkerror') ||
+    m.includes('network request failed')
+  );
 }
 
 export default function Questionnaire() {
@@ -123,17 +132,27 @@ export default function Questionnaire() {
     const contentType = file.type || 'application/octet-stream';
     const batchId = ensureBatchId();
 
-    const init = await fetch('/api/questionnaire/upload-url', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        batchId,
-        filename: file.name,
-        contentType,
-        size: file.size,
-        relativePath: relativePath || undefined,
-      }),
-    });
+    let init: Response;
+    try {
+      init = await fetch('/api/questionnaire/upload-url', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          batchId,
+          filename: file.name,
+          contentType,
+          size: file.size,
+          relativePath: relativePath || undefined,
+        }),
+      });
+    } catch (e) {
+      if (isLikelyFetchNetworkError(e)) {
+        throw new Error(
+          'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
+        );
+      }
+      throw e;
+    }
 
     if (init.ok) {
       const meta = (await init.json()) as {
@@ -142,11 +161,21 @@ export default function Questionnaire() {
         url: string;
         filename: string;
       };
-      const put = await fetch(meta.putUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {'Content-Type': contentType},
-      });
+      let put: Response;
+      try {
+        put = await fetch(meta.putUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {'Content-Type': contentType},
+        });
+      } catch (e) {
+        if (isLikelyFetchNetworkError(e)) {
+          throw new Error(
+            'Could not upload to storage (browser blocked or network error). This is often fixed by adding your exact site origin to R2 bucket CORS (including www vs non-www). Try Chrome/Edge, or disable strict tracking protection for this site.',
+          );
+        }
+        throw e;
+      }
       if (!put.ok) {
         throw new Error(
           `Upload failed for "${file.name}" (${put.status}). If this persists, ask Kicero to check R2 CORS settings.`,
@@ -171,7 +200,17 @@ export default function Questionnaire() {
       const fd = new FormData();
       fd.append('file', file);
       if (relativePath) fd.append('relativePath', relativePath);
-      const r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
+      let r: Response;
+      try {
+        r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
+      } catch (e) {
+        if (isLikelyFetchNetworkError(e)) {
+          throw new Error(
+            'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
+          );
+        }
+        throw e;
+      }
       if (!r.ok) {
         const b = (await r.json().catch(() => null)) as {error?: string} | null;
         throw new Error(b?.error ?? 'Multipart upload failed.');
@@ -201,7 +240,7 @@ export default function Questionnaire() {
       }
       setValue((prev) => ({...prev, files: [...prev.files, ...newFiles]}));
     } catch (uploadErr) {
-      if (isNetworkConnectionError(uploadErr)) {
+      if (isLikelyFetchNetworkError(uploadErr)) {
         setError(
           'Upload failed: API server is not reachable. Run `npm run dev` (starts frontend + API) and try again.',
         );
@@ -254,7 +293,7 @@ export default function Questionnaire() {
       setStepIndex(0);
     } catch (submitErr) {
       setStatus('idle');
-      if (isNetworkConnectionError(submitErr)) {
+      if (isLikelyFetchNetworkError(submitErr)) {
         setError(
           'Submission failed: API server is not reachable. Run `npm run dev` and try again.',
         );

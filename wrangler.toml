@@ -5,6 +5,8 @@ compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
 R2_ACCOUNT_ID = "518ebe3454726f8ad23f5c25cc01f13e"
+# EU-only: use https://<R2_ACCOUNT_ID>.eu.r2.cloudflarestorage.com if your bucket was created in the EU jurisdiction.
+# R2_S3_ENDPOINT = "https://518ebe3454726f8ad23f5c25cc01f13e.eu.r2.cloudflarestorage.com"
 R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
 R2_BUCKET_NAME = "kicero-questionnaire-uploads"
 CONTACT_TO_EMAIL = "info@kicero.co.uk"

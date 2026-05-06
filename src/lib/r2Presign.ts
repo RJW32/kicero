@@ -6,6 +6,8 @@ export interface R2SigningEnv {
   R2_ACCESS_KEY_ID: string;
   R2_SECRET_ACCESS_KEY: string;
   R2_BUCKET_NAME: string;
+  /** EU/FedRAMP buckets: https://<account_id>.eu.r2.cloudflarestorage.com (see Cloudflare R2 docs). */
+  R2_S3_ENDPOINT?: string;
 }
 
 export function hasR2SigningCredentials(
@@ -23,9 +25,13 @@ export async function getPresignedPutUrl(
   env: R2SigningEnv,
   params: {key: string; contentType: string; expiresIn?: number},
 ): Promise<string> {
+  const endpoint =
+    env.R2_S3_ENDPOINT?.trim() ||
+    `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
   const client = new S3Client({
     region: 'auto',
-    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    endpoint,
     credentials: {
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,

@@ -29,6 +29,8 @@ interface Env {
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   R2_BUCKET_NAME?: string;
+  /** Override when bucket uses EU / FedRAMP jurisdiction API hostname */
+  R2_S3_ENDPOINT?: string;
   SENDGRID_API_KEY?: string;
   CONTACT_TO_EMAIL?: string;
   CONTACT_FROM_EMAIL?: string;
@@ -234,6 +236,7 @@ async function handleQuestionnaireUploadUrl(request: Request, env: Env): Promise
     R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
     R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: env.R2_BUCKET_NAME,
+    R2_S3_ENDPOINT: env.R2_S3_ENDPOINT,
   };
 
   if (!hasR2SigningCredentials(signingEnv)) {

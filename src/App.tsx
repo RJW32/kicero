@@ -10,6 +10,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Home from './pages/Home';
 import SeoHead from './seo/SeoHead';
 import Analytics from './components/Analytics';
+import CookieConsent from './components/CookieConsent';
 
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
@@ -19,6 +20,7 @@ const BlogArticle = lazy(() => import('./pages/BlogArticle'));
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/TermsPage'));
 const QuestionnairePage = lazy(() => import('./pages/QuestionnairePage'));
+const ClientUploadPage = lazy(() => import('./pages/ClientUploadPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function ScrollToTop() {
@@ -45,8 +47,13 @@ export default function App() {
         <Grain />
         <ParallaxBackground />
         <Header />
-        <main id="main-content" className="relative">
-          <Suspense fallback={null}>
+        <main id="main-content" className="relative z-[1]">
+          <Suspense
+            fallback={
+              <div className="flex min-h-[45vh] items-center justify-center px-6 pt-24 text-sm text-white/70">
+                Loading…
+              </div>
+            }>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/services" element={<ServicesPage />} />
@@ -55,6 +62,7 @@ export default function App() {
               <Route path="/blog" element={<BlogIndex />} />
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/questionnaire" element={<QuestionnairePage />} />
+              <Route path="/client-upload" element={<ClientUploadPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFoundPage />} />
@@ -63,6 +71,7 @@ export default function App() {
         </main>
         <Footer />
         <Intro />
+        <CookieConsent />
       </div>
     </ErrorBoundary>
   );

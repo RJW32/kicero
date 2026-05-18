@@ -1,5 +1,11 @@
 import {useHead} from '@unhead/react';
-import {DEFAULT_OG_IMAGE, SITE_URL, type PageMeta} from './seoConfig';
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_WIDTH,
+  SITE_URL,
+  type PageMeta,
+} from './seoConfig';
 
 interface UsePageSeoOptions {
   meta: PageMeta;
@@ -26,8 +32,8 @@ export function usePageSeo({meta, structuredData = []}: UsePageSeoOptions) {
       {property: 'og:description', content: meta.description},
       {property: 'og:url', content: url},
       {property: 'og:image', content: ogImage},
-      {property: 'og:image:width', content: '1200'},
-      {property: 'og:image:height', content: '630'},
+      {property: 'og:image:width', content: DEFAULT_OG_IMAGE_WIDTH},
+      {property: 'og:image:height', content: DEFAULT_OG_IMAGE_HEIGHT},
       {property: 'og:image:alt', content: `${meta.title} — Kicero`},
       {name: 'twitter:card', content: 'summary_large_image'},
       {name: 'twitter:title', content: meta.title},

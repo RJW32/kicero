@@ -3,6 +3,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import kiceroLogoBlack from '../assets/Logo/Kicero Logo Black.svg';
+import kiceroLogoNameBlack from '../assets/Logo/Kicero Logo Name Black.svg';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,21 +32,29 @@ export default function Header() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <Link 
-            to="/" 
-            className="inline-flex items-baseline gap-1"
+          <Link
+            to="/"
+            aria-label="Kicero home"
+            className="inline-flex items-center gap-1.5"
             onClick={() => handleNavLinkClick('/')}
           >
-            <span className="text-2xl font-display font-bold tracking-tighter">KICERO</span>
+            <img
+              src={kiceroLogoNameBlack}
+              alt=""
+              aria-hidden="true"
+              loading="eager"
+              decoding="async"
+              className="h-[22px] sm:h-6 w-auto object-contain"
+            />
             <img
               src={kiceroLogoBlack}
               alt=""
               aria-hidden="true"
-              width={18}
-              height={18}
+              width={21}
+              height={21}
               loading="eager"
               decoding="async"
-              className="h-[18px] w-auto object-contain translate-y-[0.5px]"
+              className="h-[21px] w-auto object-contain -translate-y-[0px]"
             />
           </Link>
         </motion.div>

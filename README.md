@@ -47,8 +47,9 @@ handles the `/api/contact` endpoint. SPA fallback is enabled
 the home page where React Router renders the 404 page.
 
 Optional Worker Settings > Variables:
-- `CONTACT_TO_EMAIL` (default: `info@kicero.co.uk`)
-- `CONTACT_FROM_EMAIL` (default: `noreply@kicero.co.uk`)
+- `CONTACT_TO_EMAIL` (default: `info@kicero.co.uk`) — contact form submissions
+- `QUESTIONNAIRE_TO_EMAIL` (default: `forms@kicero.co.uk`) — questionnaire submission notifications
+- `CONTACT_FROM_EMAIL` (default: `noreply@kicero.co.uk`) — SendGrid “from” address for outbound mail
 - `CONTACT_FROM_NAME` (default: `Website Contact Form`)
 
 ## SEO architecture

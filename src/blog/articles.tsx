@@ -15,7 +15,7 @@ export const articleBodies: Record<string, ReactNode> = {
         At the bottom you have DIY builders like Wix and Squarespace,
         which run £15&ndash;£30 per month and need you to do the design
         yourself. In the middle you have low-cost custom studios (like
-        Kicero) at £20&ndash;£100 per month with a small launch fee. Above
+        Kicero) from £15 per month (plus a small launch payment) up to higher tiers. Above
         that, freelance bespoke designers typically charge £1,500&ndash;£5,000
         plus hosting, and full agencies charge £5,000&ndash;£40,000 for a
         small business site.

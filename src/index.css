@@ -1,14 +1,122 @@
 @import "tailwindcss";
 
 /*
- * Fonts are loaded non-blocking from index.html (Google Fonts via the
- * print/swap pattern). Don't @import them here — that would re-introduce a
- * render-blocking dependency for the whole stylesheet.
+ * Gotham (display): self-hosted from src/assets/Gotham — @font-face below.
+ * Inter (body): still loaded non-blocking from index.html (Google Fonts).
  */
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Thin/Gotham Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Thin Italic/Gotham Thin Italic.otf")
+    format("opentype");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Extra Light/Gotham Extra Light.otf")
+    format("opentype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Extra Light Italic/Gotham Extra Light Italic.otf")
+    format("opentype");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Light/Gotham Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Book/Gotham Book.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Regular/Gotham Regular.otf")
+    format("opentype");
+  font-weight: 450;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Italic/Gotham Italic.otf") format("opentype");
+  font-weight: 400 450;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Medium/Gotham Medium.otf") format("opentype");
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Bold/Gotham Bold.otf") format("opentype");
+  font-weight: 700 799;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Bold Italic/Gotham Bold Italic.ttf")
+    format("truetype");
+  font-weight: 700 799;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Black/Gotham Black.otf") format("opentype");
+  font-weight: 800 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gotham";
+  src: url("./assets/Gotham/Gotham Ultra/Gotham Ultra.otf") format("opentype");
+  font-weight: 950;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-display: "Gotham", "Inter", sans-serif;
 
   --color-brand-black: #000000;
   --color-brand-white: #ffffff;
@@ -50,6 +158,30 @@
   a,
   button {
     cursor: none;
+  }
+}
+
+/* Contact form — progressive “placeholder” pulse uses a real DOM span (Cursor /
+ * Electron and many browsers don’t animate ::placeholder reliably). */
+@keyframes kicero-contact-fake-ph-pulse {
+  0%,
+  100% {
+    opacity: 0.32;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.kicero-contact-fake-placeholder-pulse {
+  animation: kicero-contact-fake-ph-pulse 3s ease-in-out infinite;
+  color: rgb(158 158 158);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kicero-contact-fake-placeholder-pulse {
+    animation: none;
+    opacity: 1;
   }
 }
 

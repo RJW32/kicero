@@ -61,10 +61,30 @@ export default function PrivacyPage() {
               3. Cookies and analytics
             </h2>
             <p>
-              We use a privacy-friendly analytics tool that does not use
-              cookies or collect personal information. We may use cookies
-              strictly necessary for the operation of the site (for example,
-              to remember preferences). No advertising cookies are set.
+              When you first visit, we ask whether you want to allow optional
+              analytics. If you agree, we may load privacy-focused measurement
+              tools (for example{' '}
+              <a
+                href="https://plausible.io/privacy-focused-web-analytics"
+                className="underline"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Plausible
+              </a>
+              ) and, where we enable it, session insight tools such as{' '}
+              <a
+                href="https://learn.microsoft.com/en-us/clarity/faq"
+                className="underline"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Microsoft Clarity
+              </a>
+              . These help us see aggregate trends — not ads profiling. You can
+              change your choice any time via &quot;Cookie preferences&quot; in
+              the footer. We also store your consent decision locally in this
+              browser (strictly necessary). No advertising cookies are used.
             </p>
           </section>
 

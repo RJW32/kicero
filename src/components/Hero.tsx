@@ -3,16 +3,12 @@ import {ArrowRight} from 'lucide-react';
 import {useCallback} from 'react';
 import {Link, useLocation} from 'react-router-dom';
 import Magnetic from './Magnetic';
-import {
-  useIsDesktop,
-  usePrefersReducedMotion,
-} from '../hooks/useMediaQuery';
+import {usePrefersReducedMotion} from '../hooks/useMediaQuery';
 
 export default function Hero() {
   const location = useLocation();
-  const isDesktop = useIsDesktop();
   const reducedMotion = usePrefersReducedMotion();
-  const parallaxOn = isDesktop && !reducedMotion;
+  const parallaxOn = !reducedMotion;
 
   const {scrollY} = useScroll();
   const smoothScrollY = useSpring(scrollY, {

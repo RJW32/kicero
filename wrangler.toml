@@ -10,6 +10,7 @@ R2_ACCOUNT_ID = "518ebe3454726f8ad23f5c25cc01f13e"
 R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
 R2_BUCKET_NAME = "kicero-questionnaire-uploads"
 CONTACT_TO_EMAIL = "info@kicero.co.uk"
+QUESTIONNAIRE_TO_EMAIL = "forms@kicero.co.uk"
 CONTACT_FROM_EMAIL = "noreply@kicero.co.uk"
 CONTACT_FROM_NAME = "Kicero Website Questionnaire"
 

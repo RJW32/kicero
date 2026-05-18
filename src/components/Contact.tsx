@@ -46,6 +46,13 @@ export default function Contact() {
   const [values, setValues] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
 
+  const nameDone = values.name.trim().length > 0;
+  const emailDone = values.email.trim().length > 0;
+
+  const flashNamePlaceholder = !nameDone;
+  const flashEmailPlaceholder = nameDone && !emailDone;
+  const flashMessagePlaceholder = nameDone && emailDone && values.message.trim().length === 0;
+
   const handleChange = useCallback(
     (field: FieldName) =>
       (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -247,6 +254,7 @@ export default function Contact() {
                       value={values.name}
                       error={errors.name}
                       onChange={handleChange('name')}
+                      flashPlaceholder={flashNamePlaceholder}
                     />
                     <Field
                       field="email"
@@ -256,6 +264,7 @@ export default function Contact() {
                       error={errors.email}
                       onChange={handleChange('email')}
                       onBlur={handleEmailBlur}
+                      flashPlaceholder={flashEmailPlaceholder}
                     />
                   </div>
                   <Field
@@ -264,6 +273,7 @@ export default function Contact() {
                     value={values.message}
                     error={errors.message}
                     onChange={handleChange('message')}
+                    flashPlaceholder={flashMessagePlaceholder}
                   />
                   <input
                     type="text"
@@ -309,6 +319,8 @@ interface FieldProps {
   error?: string;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onBlur?: (e: FocusEvent<HTMLInputElement>) => void;
+  /** Slow pulse on placeholder while this step is “active” and the field is empty. */
+  flashPlaceholder?: boolean;
 }
 
 function Field({
@@ -320,11 +332,18 @@ function Field({
   error,
   onChange,
   onBlur,
+  flashPlaceholder = false,
 }: FieldProps) {
   const errorClass = error
     ? 'border-red-500 focus:border-red-500'
     : 'border-brand-gray-800 focus:border-brand-gray-500';
-  const baseClass = `w-full bg-brand-black/30 border py-3 px-3 focus:outline-none transition-colors text-brand-white placeholder:text-brand-gray-500 ${errorClass}`;
+  const showFlash =
+    flashPlaceholder && value.trim().length === 0;
+  const baseClass = `w-full bg-brand-black/30 border py-3 px-3 focus:outline-none transition-colors text-brand-white ${
+    showFlash ? '' : 'placeholder:text-brand-gray-500'
+  } ${errorClass}`;
+
+  const inputPlaceholder = showFlash ? '' : FIELD_PLACEHOLDER[field];
 
   return (
     <div className="space-y-1">
@@ -334,29 +353,43 @@ function Field({
       >
         {FIELD_LABEL[field]}
       </label>
-      {multiline ? (
-        <textarea
-          id={`contact-${field}`}
-          name={field}
-          rows={4}
-          value={value}
-          onChange={onChange}
-          placeholder={FIELD_PLACEHOLDER[field]}
-          className={`${baseClass} resize-none`}
-        />
-      ) : (
-        <input
-          id={`contact-${field}`}
-          name={field}
-          type={type}
-          autoComplete={autoComplete}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
-          placeholder={FIELD_PLACEHOLDER[field]}
-          className={baseClass}
-        />
-      )}
+      <div className="relative">
+        {multiline ? (
+          <textarea
+            id={`contact-${field}`}
+            name={field}
+            rows={4}
+            value={value}
+            onChange={onChange}
+            placeholder={inputPlaceholder}
+            className={`${baseClass} resize-none`}
+          />
+        ) : (
+          <input
+            id={`contact-${field}`}
+            name={field}
+            type={type}
+            autoComplete={autoComplete}
+            value={value}
+            onChange={onChange}
+            onBlur={onBlur}
+            placeholder={inputPlaceholder}
+            className={baseClass}
+          />
+        )}
+        {showFlash && (
+          <span
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 flex select-none px-3 font-light text-base leading-normal text-brand-gray-500 ${
+              multiline ? 'items-start pt-3' : 'items-center'
+            }`}
+          >
+            <span className="kicero-contact-fake-placeholder-pulse">
+              {FIELD_PLACEHOLDER[field]}
+            </span>
+          </span>
+        )}
+      </div>
       {error && (
         <p className="text-red-400 text-xs font-medium mt-2">{error}</p>
       )}

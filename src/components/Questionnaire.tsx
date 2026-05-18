@@ -1,46 +1,48 @@
-import {
-  type ChangeEvent,
-  type FormEvent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import {type FormEvent, useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router-dom';
 import {motion} from 'motion/react';
+import {ChevronDown} from 'lucide-react';
 import {
+  ABOUT_FOCUS_FIELD_IDS,
+  ABOUT_FOCUS_OPTIONS,
+  FAQ_MAX_SLOTS,
+  PORTFOLIO_GALLERY_UPLOAD_NOTE,
+  QUESTIONNAIRE_EXPLAINER_DISCLAIMER,
+  QUESTIONNAIRE_EXPLAINER_PARAGRAPHS,
+  TESTIMONIALS_MAX_SLOTS,
+  buildQuestionnaireWizardSteps,
+  orderedSelectedPages,
+  pageDetailSection,
+  pageLabelFromDetailSection,
   questionnaireQuestions,
-  questionnaireStepSections,
-  type FileQuestion,
   type QuestionnaireQuestion,
 } from '../data/questionnaire';
-import {
-  DEFAULT_MAX_BYTES,
-  WORKER_PROXY_UPLOAD_MAX_BYTES,
-} from '../lib/questionnaireUploadPolicy';
 import {usePersistentForm} from '../hooks/usePersistentForm';
 
 type AnswerValue = string | string[];
 
-interface UploadedAsset {
-  key: string;
-  url: string;
-  filename: string;
-  size: number;
-  contentType: string;
-  relativePath?: string;
-}
-
 interface FormModel {
   clientName: string;
   answers: Record<string, AnswerValue>;
-  files: UploadedAsset[];
 }
 
 const EMPTY_FORM: FormModel = {
   clientName: '',
   answers: {},
-  files: [],
 };
+
+function clampParsedCount(raw: AnswerValue | undefined, max: number, min = 0): number {
+  if (typeof raw !== 'string') return 0;
+  const trimmed = raw.trim();
+  if (trimmed === '') return 0;
+  const n = parseInt(trimmed, 10);
+  if (Number.isNaN(n)) return 0;
+  return Math.min(max, Math.max(min, n));
+}
+
+function noopCheckToggle(_id: string, _option: string): void {
+  /* renderQuestion expects a checkbox handler even for non-checkbox fields */
+}
 
 const groupedQuestions = questionnaireQuestions.reduce<Record<string, QuestionnaireQuestion[]>>(
   (acc, question) => {
@@ -50,12 +52,6 @@ const groupedQuestions = questionnaireQuestions.reduce<Record<string, Questionna
   },
   {},
 );
-
-function getWebkitRelativePath(file: File): string {
-  const w = (file as File & {webkitRelativePath?: string}).webkitRelativePath;
-  if (typeof w === 'string' && w.length > 0 && w !== file.name) return w;
-  return '';
-}
 
 /** Safari/WebKit often uses "Load failed" instead of "Failed to fetch". */
 function isLikelyFetchNetworkError(err: unknown): boolean {
@@ -70,74 +66,240 @@ function isLikelyFetchNetworkError(err: unknown): boolean {
   );
 }
 
-/** Same-origin multipart upload via Worker (avoids R2 CORS on direct PUT). */
-async function uploadThroughWorkerMultipart(
-  file: File,
-  batchId: string,
-  relativePath: string,
-): Promise<UploadedAsset> {
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('batchId', batchId);
-  if (relativePath) fd.append('relativePath', relativePath);
-  let r: Response;
-  try {
-    r = await fetch('/api/questionnaire/upload', {method: 'POST', body: fd});
-  } catch (e) {
-    if (isLikelyFetchNetworkError(e)) {
-      throw new Error(
-        'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
-      );
-    }
-    throw e;
-  }
-  if (!r.ok) {
-    const b = (await r.json().catch(() => null)) as {error?: string} | null;
-    throw new Error(b?.error ?? 'Multipart upload failed.');
-  }
-  return (await r.json()) as UploadedAsset;
+function AboutPageDetailFields({
+  answers,
+  setAnswer,
+  handleCheckToggle,
+}: {
+  answers: FormModel['answers'];
+  setAnswer: (id: string, next: AnswerValue) => void;
+  handleCheckToggle: (id: string, option: string) => void;
+}) {
+  const checklist = questionnaireQuestions.find((q) => q.id === 'page_about_elements');
+  if (!checklist || checklist.type !== 'checkbox') return null;
+
+  const selectedAreas = Array.isArray(answers.page_about_elements)
+    ? answers.page_about_elements
+    : [];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <label className="block text-sm font-semibold mb-2">
+          {checklist.label}
+          {checklist.optional !== false && (
+            <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+          )}
+        </label>
+        {renderQuestion(checklist, answers[checklist.id], setAnswer, handleCheckToggle)}
+      </div>
+      {ABOUT_FOCUS_OPTIONS.map((option) => {
+        if (!selectedAreas.includes(option)) return null;
+        const fieldId = ABOUT_FOCUS_FIELD_IDS[option];
+        const q = questionnaireQuestions.find((x) => x.id === fieldId);
+        if (!q) return null;
+        return (
+          <div key={fieldId}>
+            <label className="block text-sm font-semibold mb-2">
+              {q.label}
+              {q.optional !== false && (
+                <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+              )}
+            </label>
+            {q.description && (
+              <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
+                {q.description}
+              </p>
+            )}
+            {renderQuestion(q, answers[q.id], setAnswer, handleCheckToggle)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TestimonialsPageDetailFields({
+  answers,
+  setAnswer,
+}: {
+  answers: FormModel['answers'];
+  setAnswer: (id: string, next: AnswerValue) => void;
+}) {
+  const countQ = questionnaireQuestions.find((q) => q.id === 'page_testimonials_count');
+  const nSlots = clampParsedCount(answers.page_testimonials_count, TESTIMONIALS_MAX_SLOTS, 0);
+
+  return (
+    <div className="space-y-8">
+      {countQ && countQ.type === 'text' && (
+        <div>
+          <label className="block text-sm font-semibold mb-2">
+            {countQ.label}
+            {countQ.optional !== false && (
+              <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+            )}
+          </label>
+          {countQ.description && (
+            <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
+              {countQ.description}
+            </p>
+          )}
+          <input
+            type="number"
+            min={0}
+            max={TESTIMONIALS_MAX_SLOTS}
+            className="w-full max-w-xs border px-3 py-2"
+            placeholder={countQ.placeholder}
+            value={typeof answers.page_testimonials_count === 'string' ? answers.page_testimonials_count : ''}
+            onChange={(e) => setAnswer('page_testimonials_count', e.target.value)}
+          />
+        </div>
+      )}
+      {nSlots > 0 && (
+        <div className="space-y-6">
+          <p className="text-sm text-brand-gray-600">Enter each testimonial below.</p>
+          {Array.from({length: nSlots}, (_, index) => {
+            const slot = index + 1;
+            const q = questionnaireQuestions.find((x) => x.id === `page_testimonial_${slot}_body`);
+            if (!q) return null;
+            return (
+              <div key={q.id}>
+                <label className="block text-sm font-semibold mb-2">
+                  Testimonial {slot}
+                  <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+                </label>
+                {renderQuestion(q, answers[q.id], setAnswer, noopCheckToggle)}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FaqPageDetailFields({
+  answers,
+  setAnswer,
+}: {
+  answers: FormModel['answers'];
+  setAnswer: (id: string, next: AnswerValue) => void;
+}) {
+  const countQ = questionnaireQuestions.find((q) => q.id === 'page_faq_count');
+  const nPairs = clampParsedCount(answers.page_faq_count, FAQ_MAX_SLOTS, 0);
+
+  return (
+    <div className="space-y-8">
+      {countQ && countQ.type === 'text' && (
+        <div>
+          <label className="block text-sm font-semibold mb-2">
+            {countQ.label}
+            {countQ.optional !== false && (
+              <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+            )}
+          </label>
+          {countQ.description && (
+            <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
+              {countQ.description}
+            </p>
+          )}
+          <input
+            type="number"
+            min={0}
+            max={FAQ_MAX_SLOTS}
+            className="w-full max-w-xs border px-3 py-2"
+            placeholder={countQ.placeholder}
+            value={typeof answers.page_faq_count === 'string' ? answers.page_faq_count : ''}
+            onChange={(e) => setAnswer('page_faq_count', e.target.value)}
+          />
+        </div>
+      )}
+      {nPairs > 0 && (
+        <div className="space-y-8">
+          {Array.from({length: nPairs}, (_, index) => {
+            const num = index + 1;
+            const qField = questionnaireQuestions.find((x) => x.id === `page_faq_${num}_question`);
+            const aField = questionnaireQuestions.find((x) => x.id === `page_faq_${num}_answer`);
+            if (!qField || !aField) return null;
+            return (
+              <div
+                key={`faq-${num}`}
+                className="border border-brand-gray-200 p-4 space-y-4 bg-brand-gray-50/40"
+              >
+                <p className="text-sm font-bold tracking-wide">FAQ {num}</p>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Question
+                    {qField.optional !== false && (
+                      <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+                    )}
+                  </label>
+                  {renderQuestion(qField, answers[qField.id], setAnswer, noopCheckToggle)}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Answer
+                    {aField.optional !== false && (
+                      <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+                    )}
+                  </label>
+                  {renderQuestion(aField, answers[aField.id], setAnswer, noopCheckToggle)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Questionnaire() {
   const [searchParams] = useSearchParams();
   const ref = searchParams.get('ref')?.trim() ?? '';
-  const batchIdRef = useRef('');
   const {value, setValue, restored, clear, setRestored} = usePersistentForm<FormModel>(
     `kicero:questionnaire:${ref || 'default'}`,
     EMPTY_FORM,
   );
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success'>('idle');
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [stepIndex, setStepIndex] = useState(0);
 
-  const totalSteps = questionnaireStepSections.length;
+  useEffect(() => {
+    if (!restored) return;
+    setValue((prev) => {
+      if (!('files' in (prev as FormModel & {files?: unknown}))) return prev;
+      const {files: _removed, ...rest} = prev as FormModel & {files?: unknown};
+      return rest as FormModel;
+    });
+  }, [restored, setValue]);
+
+  const pagesSelectionKey = Array.isArray(value.answers.pagesWanted)
+    ? [...value.answers.pagesWanted].sort().join('\0')
+    : '';
+  const wizardSteps = useMemo(
+    () => buildQuestionnaireWizardSteps(orderedSelectedPages(value.answers.pagesWanted)),
+    [pagesSelectionKey],
+  );
+
+  const totalSteps = wizardSteps.length;
   const progressFraction = totalSteps ? (stepIndex + 1) / totalSteps : 1;
+  const progressPercentRounded = Math.min(100, Math.round((progressFraction * 100) / 5) * 5);
+  const activeWizardStep = wizardSteps[stepIndex];
+  const sectionKeysForStep: string[] =
+    activeWizardStep?.kind === 'sections'
+      ? activeWizardStep.sectionKeys
+      : activeWizardStep?.kind === 'pageFollowUp'
+        ? [pageDetailSection(activeWizardStep.page)]
+        : [];
 
   useEffect(() => {
     window.scrollTo({top: 0, behavior: 'smooth'});
   }, [stepIndex]);
 
-  const filesQuestion = questionnaireQuestions.find((q) => q.type === 'files') as
-    | FileQuestion
-    | undefined;
-  const maxFiles = filesQuestion?.maxFiles ?? 100;
-  const maxBytesPerFile =
-    (filesQuestion?.maxSizeMB ?? Math.round(DEFAULT_MAX_BYTES / (1024 * 1024))) * 1024 * 1024;
-  const acceptUploads =
-    filesQuestion?.accept ??
-    'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx';
-
-  function ensureBatchId(): string {
-    if (!batchIdRef.current) {
-      batchIdRef.current = crypto.randomUUID();
-    }
-    return batchIdRef.current;
-  }
-
-  function resetBatchId() {
-    batchIdRef.current = crypto.randomUUID();
-  }
+  useEffect(() => {
+    setStepIndex((i) => (totalSteps ? Math.min(i, totalSteps - 1) : 0));
+  }, [totalSteps]);
 
   const setAnswer = (id: string, next: AnswerValue) => {
     setValue((prev) => ({...prev, answers: {...prev.answers, [id]: next}}));
@@ -150,143 +312,6 @@ export default function Questionnaire() {
       ? asArray.filter((item) => item !== option)
       : [...asArray, option];
     setAnswer(id, next);
-  };
-
-  const uploadSingleFile = async (file: File): Promise<UploadedAsset> => {
-    if (file.size > maxBytesPerFile) {
-      throw new Error(
-        `File "${file.name}" exceeds the ${Math.round(maxBytesPerFile / (1024 * 1024))} MB limit.`,
-      );
-    }
-
-    const relativePath = getWebkitRelativePath(file);
-    const contentType = file.type || 'application/octet-stream';
-    const batchId = ensureBatchId();
-
-    let init: Response;
-    try {
-      init = await fetch('/api/questionnaire/upload-url', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          batchId,
-          filename: file.name,
-          contentType,
-          size: file.size,
-          relativePath: relativePath || undefined,
-        }),
-      });
-    } catch (e) {
-      if (isLikelyFetchNetworkError(e)) {
-        throw new Error(
-          'Could not reach the upload API. Check your connection, or run `npm run dev` locally with the API server.',
-        );
-      }
-      throw e;
-    }
-
-    if (init.ok) {
-      const meta = (await init.json()) as {
-        putUrl: string;
-        key: string;
-        url: string;
-        filename: string;
-      };
-      let put: Response;
-      try {
-        put = await fetch(meta.putUrl, {
-          method: 'PUT',
-          body: file,
-          headers: {'Content-Type': contentType},
-        });
-      } catch (e) {
-        if (
-          isLikelyFetchNetworkError(e) &&
-          file.size <= WORKER_PROXY_UPLOAD_MAX_BYTES
-        ) {
-          return await uploadThroughWorkerMultipart(file, batchId, relativePath);
-        }
-        if (isLikelyFetchNetworkError(e)) {
-          throw new Error(
-            `This file is about ${Math.round(file.size / (1024 * 1024))} MB; direct browser uploads need R2 CORS configured for this site's exact URL (www vs non-www). Ask Kicero to fix CORS, use a smaller file (under ${Math.round(WORKER_PROXY_UPLOAD_MAX_BYTES / (1024 * 1024))} MB can upload via the site instead), or try Chrome/Edge.`,
-          );
-        }
-        throw e;
-      }
-      if (!put.ok) {
-        if (file.size <= WORKER_PROXY_UPLOAD_MAX_BYTES) {
-          try {
-            return await uploadThroughWorkerMultipart(file, batchId, relativePath);
-          } catch {
-            /* prefer HTTP status message below */
-          }
-        }
-        throw new Error(
-          `Upload failed for "${file.name}" (${put.status}). If this persists, ask Kicero to check R2 CORS settings.`,
-        );
-      }
-      return {
-        key: meta.key,
-        url: meta.url,
-        filename: meta.filename,
-        size: file.size,
-        contentType,
-        relativePath: relativePath || undefined,
-      };
-    }
-
-    const errJson = (await init.json().catch(() => ({}))) as {
-      error?: string;
-      fallback?: boolean;
-    };
-
-    if (init.status === 501 && errJson.fallback) {
-      return await uploadThroughWorkerMultipart(file, batchId, relativePath);
-    }
-
-    throw new Error(errJson.error ?? 'Could not start upload.');
-  };
-
-  const processFileList = async (selected: FileList | File[]) => {
-    const list = Array.from(selected);
-    if (list.length === 0) return;
-
-    if (value.files.length + list.length > maxFiles) {
-      setError(`You can upload up to ${maxFiles} files.`);
-      return;
-    }
-
-    setError('');
-    setUploading(true);
-    try {
-      const newFiles: UploadedAsset[] = [];
-      for (const file of list) {
-        const asset = await uploadSingleFile(file);
-        newFiles.push(asset);
-      }
-      setValue((prev) => ({...prev, files: [...prev.files, ...newFiles]}));
-    } catch (uploadErr) {
-      if (isLikelyFetchNetworkError(uploadErr)) {
-        setError(
-          'Upload failed: API server is not reachable. Run `npm run dev` (starts frontend + API) and try again.',
-        );
-      } else {
-        setError(uploadErr instanceof Error ? uploadErr.message : 'Upload failed.');
-      }
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const uploadFiles = async (e: ChangeEvent<HTMLInputElement>) => {
-    const selected = e.currentTarget.files;
-    if (!selected?.length) return;
-    await processFileList(selected);
-    e.currentTarget.value = '';
-  };
-
-  const removeFile = (key: string) => {
-    setValue((prev) => ({...prev, files: prev.files.filter((file) => file.key !== key)}));
   };
 
   const submitQuestionnaire = async () => {
@@ -305,7 +330,7 @@ export default function Questionnaire() {
           clientEmail: '',
           ref,
           answers: value.answers,
-          files: value.files,
+          files: [],
           website: '',
         }),
       });
@@ -315,7 +340,6 @@ export default function Questionnaire() {
       }
       setStatus('success');
       clear();
-      resetBatchId();
       setStepIndex(0);
     } catch (submitErr) {
       setStatus('idle');
@@ -351,6 +375,41 @@ export default function Questionnaire() {
             Ref: {ref}
           </p>
         )}
+
+        <details className="group mb-10 border border-brand-gray-200 bg-brand-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] open:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-shadow rounded-sm overflow-hidden">
+          <summary className="cursor-pointer list-none flex gap-4 px-5 py-4 sm:px-6 sm:py-5 items-start sm:items-center text-left hover:bg-brand-gray-50/90 transition-colors [&::-webkit-details-marker]:hidden">
+            <span
+              className="mt-0.5 sm:mt-0 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-brand-gray-200 bg-brand-white text-brand-gray-700"
+              aria-hidden
+            >
+              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-open:rotate-180" />
+            </span>
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className="font-display block text-lg sm:text-xl font-bold tracking-tight text-brand-black">
+                Must read
+              </span>
+              <span className="block text-sm text-brand-gray-600 leading-snug">
+                How we use your answers — and why everything here is optional.
+              </span>
+            </span>
+          </summary>
+          <div className="border-t border-brand-gray-100 px-5 py-5 sm:px-6 sm:py-6 space-y-4 bg-brand-white">
+            <div className="space-y-4 text-sm sm:text-[0.9375rem] text-brand-gray-700 leading-relaxed">
+              {QUESTIONNAIRE_EXPLAINER_PARAGRAPHS.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+            <div className="pt-4 mt-1 border-t border-brand-gray-200">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-brand-gray-500 mb-2">
+                A note on how this works
+              </p>
+              <p className="text-sm text-brand-gray-600 leading-relaxed">
+                {QUESTIONNAIRE_EXPLAINER_DISCLAIMER}
+              </p>
+            </div>
+          </div>
+        </details>
+
         {restored && status === 'idle' && (
           <div className="mb-6 border border-brand-gray-300 bg-brand-gray-50 p-4 text-sm">
             Restored your previous progress.
@@ -358,7 +417,6 @@ export default function Questionnaire() {
               type="button"
               onClick={() => {
                 clear();
-                resetBatchId();
                 setStepIndex(0);
                 setRestored(false);
               }}
@@ -381,7 +439,7 @@ export default function Questionnaire() {
                 <span>
                   Step {stepIndex + 1} of {totalSteps}
                 </span>
-                <span className="tabular-nums">{Math.round(progressFraction * 100)}%</span>
+                <span className="tabular-nums">{progressPercentRounded}%</span>
               </div>
               <div
                 className="h-3 rounded-full bg-brand-gray-200 overflow-hidden shadow-inner"
@@ -393,19 +451,9 @@ export default function Questionnaire() {
               >
                 <div
                   className="h-full bg-brand-black transition-[width] duration-300 ease-out rounded-full"
-                  style={{width: `${progressFraction * 100}%`}}
+                  style={{width: `${progressPercentRounded}%`}}
                 />
               </div>
-              <input
-                type="range"
-                min={1}
-                max={totalSteps}
-                step={1}
-                value={stepIndex + 1}
-                disabled
-                className="w-full h-2 accent-brand-black"
-                aria-hidden
-              />
             </div>
 
             <div className="border p-6 space-y-10">
@@ -420,50 +468,69 @@ export default function Questionnaire() {
                 </div>
               )}
 
-              {(questionnaireStepSections[stepIndex] ?? []).map((sectionKey) => {
-                const questions = groupedQuestions[sectionKey] ?? [];
-                if (questions.length === 0) return null;
-                return (
-                  <div key={sectionKey} className="space-y-5">
-                    <h2 className="font-bold text-xl border-b border-brand-gray-200 pb-2">
-                      {sectionKey}
-                    </h2>
-                    {questions.map((question) => (
-                      <div key={question.id}>
-                        <label className="block text-sm font-semibold mb-2">
-                          {question.label}
-                          {question.optional !== false && (
-                            <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
-                          )}
-                        </label>
-                        {question.description && (
-                          <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
-                            {question.description}
-                          </p>
-                        )}
-                        {question.type === 'files' ? (
-                          <FilesField
-                            accept={acceptUploads}
-                            disabled={uploading}
-                            files={value.files}
-                            maxFiles={maxFiles}
-                            onRemove={removeFile}
-                            onChangeFiles={uploadFiles}
-                            onChangeFolder={uploadFiles}
-                          />
-                        ) : (
-                          renderQuestion(
-                            question,
-                            value.answers[question.id],
-                            setAnswer,
-                            handleCheckToggle,
-                          )
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+              {sectionKeysForStep.map((sectionKey) => {
+                  const questions = groupedQuestions[sectionKey] ?? [];
+                  if (questions.length === 0) return null;
+                  const detailPageLabel = pageLabelFromDetailSection(sectionKey);
+
+                  return (
+                    <div key={sectionKey} className="space-y-5">
+                      <h2 className="font-bold text-xl border-b border-brand-gray-200 pb-2">
+                        {sectionKey}
+                      </h2>
+                      {detailPageLabel === 'Portfolio / Gallery' && (
+                        <p className="text-sm text-brand-gray-600 border border-brand-gray-200 bg-brand-gray-50 px-4 py-3 leading-relaxed">
+                          {PORTFOLIO_GALLERY_UPLOAD_NOTE}
+                        </p>
+                      )}
+                      {detailPageLabel === 'About' && (
+                        <AboutPageDetailFields
+                          answers={value.answers}
+                          setAnswer={setAnswer}
+                          handleCheckToggle={handleCheckToggle}
+                        />
+                      )}
+                      {detailPageLabel === 'Testimonials' && (
+                        <TestimonialsPageDetailFields answers={value.answers} setAnswer={setAnswer} />
+                      )}
+                      {detailPageLabel === 'FAQ' && (
+                        <FaqPageDetailFields answers={value.answers} setAnswer={setAnswer} />
+                      )}
+                      {detailPageLabel !== 'About' &&
+                        detailPageLabel !== 'Testimonials' &&
+                        detailPageLabel !== 'FAQ' &&
+                        questions.map((question) => (
+                          <div key={question.id}>
+                            <label className="block text-sm font-semibold mb-2">
+                              {question.label}
+                              {question.optional !== false && (
+                                <span className="text-brand-gray-500 font-normal ml-2">
+                                  (optional)
+                                </span>
+                              )}
+                            </label>
+                            {question.description && (
+                              <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
+                                {question.description}
+                              </p>
+                            )}
+                            {renderQuestion(
+                              question,
+                              value.answers[question.id],
+                              setAnswer,
+                              handleCheckToggle,
+                            )}
+                            {question.id === 'hasPhotos' && value.answers.hasPhotos === 'Yes' && (
+                              <p className="mt-3 text-sm text-brand-gray-600 leading-relaxed max-w-3xl">
+                                Wonderful — once someone at Kicero has read through your answers, we
+                                will email you a link so you can upload your photos for the site.
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  );
+                })}
             </div>
 
             <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" />
@@ -483,7 +550,7 @@ export default function Questionnaire() {
               </button>
               <button
                 type="submit"
-                disabled={status === 'submitting' || uploading}
+                disabled={status === 'submitting'}
                 className="py-4 px-8 bg-brand-black text-white uppercase tracking-widest disabled:opacity-60 shrink-0"
               >
                 {stepIndex >= totalSteps - 1
@@ -497,75 +564,6 @@ export default function Questionnaire() {
         )}
       </div>
     </section>
-  );
-}
-
-function FilesField({
-  accept,
-  disabled,
-  files,
-  maxFiles,
-  onChangeFiles,
-  onChangeFolder,
-  onRemove,
-}: {
-  accept: string;
-  disabled: boolean;
-  files: UploadedAsset[];
-  maxFiles: number;
-  onChangeFiles: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
-  onChangeFolder: (e: ChangeEvent<HTMLInputElement>) => void | Promise<void>;
-  onRemove: (key: string) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <label className="inline-flex items-center gap-2 text-sm border px-3 py-2 cursor-pointer bg-white">
-          <span className="font-semibold">Files</span>
-          <input
-            type="file"
-            multiple
-            accept={accept}
-            disabled={disabled}
-            onChange={onChangeFiles}
-            className="sr-only"
-          />
-          <span className="text-brand-gray-600">Choose files…</span>
-        </label>
-        <label className="inline-flex items-center gap-2 text-sm border px-3 py-2 cursor-pointer bg-white">
-          <span className="font-semibold">Folder</span>
-          <input
-            type="file"
-            multiple
-            // @ts-expect-error non-standard attribute for directory picks (Chromium/Safari)
-            webkitdirectory=""
-            accept={accept}
-            disabled={disabled}
-            onChange={onChangeFolder}
-            className="sr-only"
-          />
-          <span className="text-brand-gray-600">Choose folder…</span>
-        </label>
-      </div>
-      <p className="text-xs text-brand-gray-500">
-        Up to {maxFiles} files; large videos supported. Folder upload works best in Chrome / Edge /
-        Safari.
-      </p>
-      {files.length > 0 && (
-        <ul className="mt-2 space-y-2 text-sm">
-          {files.map((file) => (
-            <li key={file.key} className="flex items-center justify-between border p-2 gap-2">
-              <a className="underline break-all min-w-0" href={file.url} target="_blank" rel="noreferrer">
-                {file.filename}
-              </a>
-              <button type="button" className="text-red-600 shrink-0" onClick={() => onRemove(file.key)}>
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -611,7 +609,7 @@ function renderQuestion(
         className="w-full border px-3 py-2 min-h-24"
         value={typeof currentValue === 'string' ? currentValue : ''}
         placeholder={question.placeholder}
-        onChange={(e) => setAnswer(question.id, e.currentTarget.value)}
+        onChange={(e) => setAnswer(question.id, e.target.value)}
       />
     );
   }
@@ -623,7 +621,7 @@ function renderQuestion(
         className="w-full border px-3 py-2"
         value={typeof currentValue === 'string' ? currentValue : ''}
         placeholder={question.placeholder}
-        onChange={(e) => setAnswer(question.id, e.currentTarget.value)}
+        onChange={(e) => setAnswer(question.id, e.target.value)}
       />
     );
   }
@@ -648,8 +646,13 @@ function renderQuestion(
 
   if (question.type === 'checkbox') {
     const selected = Array.isArray(currentValue) ? currentValue : [];
+    const cols = 'gridColumns' in question ? question.gridColumns : undefined;
+    const useGrid = typeof cols === 'number' && cols > 1;
     return (
-      <div className="space-y-2">
+      <div
+        className={useGrid ? 'grid gap-x-8 gap-y-2 text-sm' : 'space-y-2'}
+        style={useGrid ? {gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`} : undefined}
+      >
         {question.options.map((option) => (
           <label key={option} className="flex items-center gap-2 text-sm">
             <input

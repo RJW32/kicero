@@ -21,6 +21,13 @@ type PagesFunction<TEnv> = (context: PagesContext<TEnv>) => Response | Promise<R
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Enquiries inbox; CONTACT_TO_EMAIL is often confused with CONTACT_FROM_EMAIL (noreply). */
+function contactSubmissionRecipient(raw: string | undefined): string {
+  const t = raw?.trim();
+  if (!t || t.toLowerCase() === 'noreply@kicero.co.uk') return 'info@kicero.co.uk';
+  return t;
+}
+
 function escapeHtml(input: string): string {
   return input
     .replaceAll('&', '&amp;')
@@ -68,7 +75,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const sendgridKey = context.env.SENDGRID_API_KEY;
-  const toEmail = context.env.CONTACT_TO_EMAIL ?? 'info@kicero.co.uk';
+  const toEmail = contactSubmissionRecipient(context.env.CONTACT_TO_EMAIL);
   const fromEmail = context.env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
   const fromName = context.env.CONTACT_FROM_NAME ?? 'Website Contact Form';
 

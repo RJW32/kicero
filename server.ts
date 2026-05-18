@@ -2,9 +2,20 @@ import 'dotenv/config';
 import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
-import {questionnaireQuestions} from './src/data/questionnaire';
 import {
+  orderedSelectedPages,
+  pageLabelFromDetailSection,
+  questionnaireQuestions,
+} from './src/data/questionnaire';
+import {buildClientUploadEmailParts} from './src/lib/clientUploadEmailParts';
+import {
+  pageSlugFromLabel,
+  verifyClientUploadToken,
+} from './src/lib/clientUploadToken';
+import {
+  assertAllowedClientPortalUpload,
   assertAllowedUpload,
+  buildClientMediaObjectKey,
   buildObjectKey,
   DEFAULT_MAX_BYTES,
 } from './src/lib/questionnaireUploadPolicy';
@@ -61,6 +72,13 @@ function escapeHtml(input: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+/** Enquiries inbox; CONTACT_TO_EMAIL is often confused with CONTACT_FROM_EMAIL (noreply). */
+function contactSubmissionRecipient(raw: string | undefined): string {
+  const t = raw?.trim();
+  if (!t || t.toLowerCase() === 'noreply@kicero.co.uk') return 'info@kicero.co.uk';
+  return t;
 }
 
 function getConfig() {
@@ -138,7 +156,7 @@ ${message}
   `.trim();
 
   const sendgridPayload = {
-    personalizations: [{to: [{email: config.CONTACT_TO_EMAIL}]}],
+    personalizations: [{to: [{email: contactSubmissionRecipient(config.CONTACT_TO_EMAIL)}]}],
     from: {
       email: config.CONTACT_FROM_EMAIL,
       name: config.CONTACT_FROM_NAME,
@@ -234,6 +252,73 @@ app.post('/api/questionnaire/upload-url', async (req, res) => {
   }
 });
 
+app.post('/api/client-upload/presign', async (req, res) => {
+  const secret = process.env.CLIENT_UPLOAD_SECRET?.trim();
+  if (!secret) {
+    return res.status(503).json({error: 'Client uploads are not configured.', code: 'NO_CLIENT_UPLOAD'});
+  }
+
+  const body = req.body ?? {};
+  const token = typeof body.token === 'string' ? body.token : '';
+  const pageLabel = typeof body.pageLabel === 'string' ? body.pageLabel.trim() : '';
+  const filename = typeof body.filename === 'string' ? body.filename : '';
+  const contentType =
+    typeof body.contentType === 'string' && body.contentType.length > 0
+      ? body.contentType
+      : 'application/octet-stream';
+  const size = typeof body.size === 'number' ? body.size : Number.NaN;
+  const batchIdRaw = typeof body.batchId === 'string' ? body.batchId.trim() : '';
+
+  if (!token || !pageLabel || !filename) {
+    return res.status(400).json({error: 'token, pageLabel, and filename are required.'});
+  }
+  if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
+    return res.status(400).json({error: 'batchId must be a UUID.'});
+  }
+
+  let payload;
+  try {
+    payload = await verifyClientUploadToken(secret, token);
+  } catch {
+    return res.status(500).json({error: 'Could not validate upload token.'});
+  }
+
+  if (!payload || !payload.pages.includes(pageLabel)) {
+    return res.status(403).json({error: 'Invalid or expired upload link.'});
+  }
+
+  const pageSlug = pageSlugFromLabel(pageLabel);
+  const v = assertAllowedClientPortalUpload({filename, contentType, size});
+  if (v.error) return res.status(400).json({error: v.error});
+
+  const signingEnv = r2EnvFromProcess();
+  if (!hasR2SigningCredentials(signingEnv)) {
+    return res.status(503).json({
+      error: 'Direct upload to R2 is not configured in .env.',
+      code: 'NO_PRESIGN',
+    });
+  }
+
+  try {
+    const key = buildClientMediaObjectKey({
+      folder: payload.folder,
+      pageSlug,
+      batchId: batchIdRaw,
+      filename,
+    });
+    const putUrl = await getPresignedPutUrl(signingEnv, {
+      key,
+      contentType,
+      expiresIn: 3600,
+    });
+    const publicBase = (process.env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
+    const publicUrl = publicBase ? `${publicBase}/${key}` : key;
+    return res.status(200).json({putUrl, key, url: publicUrl, filename, expiresIn: 3600});
+  } catch {
+    return res.status(500).json({error: 'Could not create upload URL.'});
+  }
+});
+
 app.post('/api/questionnaire/upload', uploadDisk.single('file'), async (req, res) => {
   const file = req.file;
   if (!file) {
@@ -301,8 +386,35 @@ app.post('/api/questionnaire', async (req, res) => {
     return res.status(500).json({error: 'Server email configuration is missing.'});
   }
 
+  const orderedPagesAnswer = orderedSelectedPages(
+    Array.isArray(answers.pagesWanted) ? (answers.pagesWanted as string[]) : [],
+  );
+
+  const requestProto =
+    typeof req.headers['x-forwarded-proto'] === 'string'
+      ? req.headers['x-forwarded-proto'].split(',')[0]?.trim()
+      : undefined;
+  const inferredOrigin = `${requestProto ?? req.protocol}://${req.get('host')}`;
+  const dummyRequestUrl = `${inferredOrigin}/`;
+
+  const clientUploadParts = await buildClientUploadEmailParts({
+    requestUrl: dummyRequestUrl,
+    publicSiteUrl: process.env.PUBLIC_SITE_URL,
+    clientName,
+    ref,
+    orderedPages: orderedPagesAnswer,
+    clientUploadSecret: process.env.CLIENT_UPLOAD_SECRET,
+    escapeHtmlBody: escapeHtml,
+  });
+  const clientUploadNotice = clientUploadParts.plainAppend;
+  const uploadHtmlExtra = clientUploadParts.htmlAppend;
+
   const sections = new Map<string, Array<{label: string; value: string}>>();
   for (const question of questionnaireQuestions) {
+    const pageOnlyLabel = pageLabelFromDetailSection(question.section);
+    if (pageOnlyLabel !== null && !orderedPagesAnswer.includes(pageOnlyLabel)) {
+      continue;
+    }
     const raw = answers[question.id];
     const value = Array.isArray(raw)
       ? raw.join(', ')
@@ -324,10 +436,12 @@ app.post('/api/questionnaire', async (req, res) => {
     ? `\n\nUploaded files:\n${files.map((file) => `- ${file.filename}: ${file.url}`).join('\n')}`
     : '\n\nUploaded files:\n- None';
   const subject = `Questionnaire: ${clientName}${ref ? ` [${ref}]` : ''}`;
+  const questionnaireToEmail =
+    process.env.QUESTIONNAIRE_TO_EMAIL ?? 'forms@kicero.co.uk';
 
-  const internalNotice = `New questionnaire submission\n\nClient name: ${clientName}\nClient email: ${hasClientEmail ? clientEmail : 'Not provided'}\nRef: ${ref || '—'}\n\n${sectionText}${filesText}`;
+  const internalNotice = `New questionnaire submission\n\nClient name: ${clientName}\nClient email: ${hasClientEmail ? clientEmail : 'Not provided'}\nRef: ${ref || '—'}\n\n${sectionText}${filesText}${clientUploadNotice}`;
   const sendgridPayload = {
-    personalizations: [{to: [{email: config.CONTACT_TO_EMAIL}]}],
+    personalizations: [{to: [{email: questionnaireToEmail}]}],
     from: {
       email: config.CONTACT_FROM_EMAIL,
       name: config.CONTACT_FROM_NAME,
@@ -347,7 +461,7 @@ app.post('/api/questionnaire', async (req, res) => {
       },
       {
         type: 'text/html',
-        value: `<h2>${escapeHtml(subject)}</h2><pre>${escapeHtml(sectionText + filesText)}</pre>`,
+        value: `<h2>${escapeHtml(subject)}</h2><pre>${escapeHtml(sectionText + filesText)}</pre>${uploadHtmlExtra}`,
       },
     ],
   };
@@ -380,7 +494,7 @@ app.post('/api/questionnaire', async (req, res) => {
         {
           type: 'text/plain',
           value:
-            'Thanks for completing our website questionnaire. Kicero will be in touch.',
+            'Thanks for completing our website questionnaire.\n\nA member at Kicero will contact you as soon as possible.',
         },
       ],
     };

@@ -1,5 +1,6 @@
 import {useHead} from '@unhead/react';
 import {useMemo} from 'react';
+import {useCookieConsent} from '../context/CookieConsentContext';
 import {isPrerender} from '../hooks/useIsPrerender';
 
 const PLAUSIBLE_DOMAIN = import.meta.env.VITE_PLAUSIBLE_DOMAIN as
@@ -13,14 +14,14 @@ const CLARITY_PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID as
   | undefined;
 
 /**
- * Analytics injector. Skips entirely during prerender (to keep static HTML
- * tracker-free) and when no env vars are configured.
- *
- * Always calls hooks unconditionally — Rules of Hooks. We pass an empty list
- * of scripts when disabled.
+ * Analytics injector. Skips during prerender, when the visitor has not
+ * consented yet, or when optional analytics are declined. Requires configured
+ * env vars (Plausible and/or Clarity) to emit any scripts.
  */
 export default function Analytics() {
-  const skip = isPrerender();
+  const {hasAnswered, analyticsAllowed} = useCookieConsent();
+  const skip =
+    isPrerender() || !hasAnswered || !analyticsAllowed;
 
   const scripts = useMemo(() => {
     if (skip) return [] as Array<Record<string, unknown>>;

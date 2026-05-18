@@ -141,20 +141,20 @@ export const offerSchema = {
       price: '40',
       priceCurrency: 'GBP',
       description:
-        'One-off payment when your website goes live, equivalent to two months of hosting.',
+        'One-off payment when your website goes live: £25 setup plus your first month (£15).',
       availability: 'https://schema.org/InStock',
       url: `${SITE_URL}/services`,
     },
     {
       '@type': 'Offer',
       name: 'Hosting & support',
-      price: '20',
+      price: '15',
       priceCurrency: 'GBP',
       description:
         'Recurring monthly fee covering hosting, the live contact form, and up to 30 minutes of small updates each month.',
       priceSpecification: {
         '@type': 'UnitPriceSpecification',
-        price: '20',
+        price: '15',
         priceCurrency: 'GBP',
         unitText: 'MONTH',
       },

@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="6" fill="#000000"/>
-  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-family="-apple-system, BlinkMacSystemFont, 'Space Grotesk', system-ui, sans-serif" font-weight="800" font-size="38" fill="#ffffff" letter-spacing="-1">K</text>
-  <rect x="6" y="50" width="52" height="3" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <clipPath id="kicero-mark">
+      <circle cx="50" cy="50" r="48" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#kicero-mark)">
+    <rect width="100" height="100" fill="#000000" />
+    <rect x="46" y="0" width="8" height="100" fill="#ffffff" />
+    <rect x="0" y="46" width="100" height="8" fill="#ffffff" />
+  </g>
 </svg>

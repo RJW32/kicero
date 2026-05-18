@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import kiceroLogoBlack from '../assets/Logo/Kicero Logo Black.svg';
+import kiceroLogoNameBlack from '../assets/Logo/Kicero Logo Name Black.svg';
 
 export default function Intro() {
   const [isVisible, setIsVisible] = useState(false);
@@ -8,6 +9,7 @@ export default function Intro() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
+      if (window.location.pathname.startsWith('/client-upload')) return;
       const params = new URLSearchParams(window.location.search);
       if (params.get('prerender') === '1') return;
       const reducedMotion = window.matchMedia(
@@ -43,15 +45,16 @@ export default function Intro() {
             >
               Welcome to
             </motion.p>
-            <div className="flex items-end gap-3 md:gap-4">
-              <motion.span
+            <div className="flex items-center gap-3 md:gap-4">
+              <motion.img
+                src={kiceroLogoNameBlack}
+                alt=""
+                aria-hidden="true"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.8, ease: 'easeOut' }}
-                className="font-display text-5xl md:text-8xl font-bold tracking-tighter uppercase"
-              >
-                KICERO
-              </motion.span>
+                className="h-12 md:h-[4.5rem] w-auto max-w-[85vw] object-contain"
+              />
               <motion.img
                 src={kiceroLogoBlack}
                 alt=""
@@ -63,7 +66,7 @@ export default function Intro() {
                   delay: 1.05,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                className="h-10 md:h-16 w-auto object-contain -translate-y-2.5 md:-translate-y-3.5"
+                className="h-10 md:h-16 w-auto shrink-0 object-contain"
               />
             </div>
           </div>

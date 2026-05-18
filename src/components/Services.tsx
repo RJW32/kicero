@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Code, Layout, Smartphone, Shield } from 'lucide-react';
+import { Code, Layout, Search, Smartphone, Shield } from 'lucide-react';
 
 const services = [
   {
@@ -16,6 +16,12 @@ const services = [
     icon: <Smartphone size={32} />,
     title: 'Responsive Design',
     description: 'Perfected experience across all screen sizes, from ultra-wide monitors to the smallest smartphones.'
+  },
+  {
+    icon: <Search size={32} />,
+    title: 'Basic SEO',
+    description:
+      'We set up the fundamentals so Google can find and understand your site: clear page titles and descriptions, sensible headings, and clean structure — the straightforward groundwork that helps people discover you in search.',
   },
   {
     icon: <Shield size={32} />,

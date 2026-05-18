@@ -1,4 +1,4 @@
-export type QuestionType = 'text' | 'textarea' | 'email' | 'radio' | 'checkbox' | 'files';
+export type QuestionType = 'text' | 'textarea' | 'email' | 'radio' | 'checkbox';
 
 export interface BaseQuestion {
   id: string;
@@ -17,18 +17,320 @@ export interface TextQuestion extends BaseQuestion {
 export interface ChoiceQuestion extends BaseQuestion {
   type: 'radio' | 'checkbox';
   options: string[];
+  /** Checkbox groups only: renders options in a CSS grid with this many columns. */
+  gridColumns?: number;
 }
 
-export interface FileQuestion extends BaseQuestion {
-  type: 'files';
-  accept?: string;
-  maxFiles?: number;
-  maxSizeMB?: number;
+export type QuestionnaireQuestion = TextQuestion | ChoiceQuestion;
+
+/** Must match the Pages checkbox order; used for per-page follow-up steps. */
+export const PAGE_OPTIONS_ORDER = [
+  'Home',
+  'About',
+  'Services',
+  'Pricing',
+  'Portfolio / Gallery',
+  'Testimonials',
+  'FAQ',
+  'Contact',
+] as const;
+
+export type PageOption = (typeof PAGE_OPTIONS_ORDER)[number];
+
+const PAGE_SECTION_PREFIX = 'Page: ';
+
+export function pageDetailSection(pageName: string): string {
+  return `${PAGE_SECTION_PREFIX}${pageName}`;
 }
 
-export type QuestionnaireQuestion = TextQuestion | ChoiceQuestion | FileQuestion;
+/** Page follow-up sections use `Page: …` — extract the label or return null. */
+export function pageLabelFromDetailSection(section: string): string | null {
+  if (!section.startsWith(PAGE_SECTION_PREFIX)) return null;
+  return section.slice(PAGE_SECTION_PREFIX.length);
+}
 
-export const questionnaireQuestions: QuestionnaireQuestion[] = [
+export function orderedSelectedPages(pagesRaw: string | string[] | undefined): string[] {
+  const selected = Array.isArray(pagesRaw) ? pagesRaw : [];
+  return PAGE_OPTIONS_ORDER.filter((p) => selected.includes(p));
+}
+
+/** Client-facing stub upload UI (linked from questionnaire notification email). */
+export const CLIENT_UPLOAD_PATH = '/client-upload' as const;
+
+/** Origin for questionnaire notification links: PUBLIC_SITE_URL when set (recommended for separate API/UI hosts), otherwise request URL, then production default. */
+export function questionnaireSiteOrigin(requestUrl: string, publicSiteUrl?: string): string {
+  const trimmedEnv = typeof publicSiteUrl === 'string' ? publicSiteUrl.trim().replace(/\/$/, '') : '';
+  if (trimmedEnv && trimmedEnv.startsWith('http')) return trimmedEnv;
+
+  try {
+    const fromRequest = new URL(requestUrl).origin;
+    if (fromRequest?.startsWith('http')) return fromRequest;
+  } catch {
+    /* ignore */
+  }
+  return trimmedEnv ? trimmedEnv.replace(/\/$/, '') : 'https://kicero.co.uk';
+}
+
+/** Parses `pages` query — repeatable `?pages=` and/or comma-separated values. */
+export function parseClientUploadPagesFromSearch(search: string): string[] {
+  const q = search.startsWith('?') ? search.slice(1) : search;
+  const params = new URLSearchParams(q);
+  const out: string[] = [];
+  for (const chunk of params.getAll('pages')) {
+    for (const part of chunk.split(',')) {
+      const t = part.trim();
+      if (t) out.push(t);
+    }
+  }
+  return out;
+}
+
+/** Canonical order; returns `null` if there is nothing valid to show. */
+export function buildClientUploadHref(siteOrigin: string, pagesCanonical: string[]): string | null {
+  if (pagesCanonical.length === 0) return null;
+  const base = siteOrigin.replace(/\/$/, '');
+  const u = new URL(CLIENT_UPLOAD_PATH, `${base}/`);
+  for (const p of pagesCanonical) {
+    u.searchParams.append('pages', p);
+  }
+  return u.href;
+}
+
+/** Personalised signed link (`t` carries folder + pages; no tampering without secret). */
+export function buildClientUploadHrefSigned(siteOrigin: string, signedToken: string): string | null {
+  if (!signedToken.trim()) return null;
+  const base = siteOrigin.replace(/\/$/, '');
+  const u = new URL(CLIENT_UPLOAD_PATH, `${base}/`);
+  u.searchParams.set('t', signedToken);
+  return u.href;
+}
+
+type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
+
+type QuestionWithoutSection = DistributiveOmit<QuestionnaireQuestion, 'section'>;
+
+function pageQuestions(
+  pageName: PageOption,
+  items: QuestionWithoutSection[],
+): QuestionnaireQuestion[] {
+  const section = pageDetailSection(pageName);
+  return items.map((q) => ({...q, section} as QuestionnaireQuestion));
+}
+
+export const ABOUT_FOCUS_OPTIONS = ['Team', 'Mission', 'Story', 'Credentials'] as const;
+
+export const ABOUT_FOCUS_FIELD_IDS: Record<(typeof ABOUT_FOCUS_OPTIONS)[number], string> = {
+  Team: 'page_about_team',
+  Mission: 'page_about_mission',
+  Story: 'page_about_story',
+  Credentials: 'page_about_credentials',
+};
+
+/** Shown near portfolio/gallery fields in the questionnaire. */
+export const PORTFOLIO_GALLERY_UPLOAD_NOTE =
+  'An option to upload gallery images directly in this questionnaire will be added later. For now, describe what should appear above—you can share images with us separately after we get in touch.';
+
+/** Shown in the collapsible “Must read” panel (body paragraphs, then disclaimer). */
+export const QUESTIONNAIRE_EXPLAINER_PARAGRAPHS: string[] = [
+  'If figuring out your website still feels fuzzy or a bit overwhelming, you are in the right place. Every question here is optional on purpose — share what feels easy today, skip what does not, and we will read between the lines and suggest sensible defaults so you are not navigating endless “what should this look like?” loops on your own.',
+  'If you would rather hand more of the creative choices to us, that is completely fine. We will use whatever you share as gentle direction and shape a site that fits your goals and audience as well as we can from your answers.',
+];
+
+export const QUESTIONNAIRE_EXPLAINER_DISCLAIMER =
+  'We treat your answers as our guide and aim to reflect your direction closely. Like any creative project, the finished site might not mirror an exact picture in your head — that is normal — but we will work thoughtfully from what you have shared.';
+
+export const TESTIMONIALS_MAX_SLOTS = 10;
+
+export const FAQ_MAX_SLOTS = 50;
+
+const testimonialsPageQuestions: QuestionnaireQuestion[] = (() => {
+  const section = pageDetailSection('Testimonials');
+  const slots: QuestionnaireQuestion[] = Array.from({length: TESTIMONIALS_MAX_SLOTS}, (_, i) => {
+    const num = i + 1;
+    return {
+      id: `page_testimonial_${num}_body`,
+      section,
+      label: `Testimonial ${num} — quote, attribution, role, or anything else we should include`,
+      type: 'textarea',
+      optional: true,
+    };
+  });
+  return [
+    {
+      id: 'page_testimonials_count',
+      section,
+      label: 'How many testimonials would you like on the website?',
+      description: `Optional. Enter 0–${TESTIMONIALS_MAX_SLOTS}. That many testimonial boxes will appear below.`,
+      type: 'text',
+      optional: true,
+      placeholder: `0–${TESTIMONIALS_MAX_SLOTS}`,
+    },
+    ...slots,
+  ];
+})();
+
+const faqPageQuestions: QuestionnaireQuestion[] = (() => {
+  const section = pageDetailSection('FAQ');
+  const pairs: QuestionnaireQuestion[] = [];
+  for (let i = 1; i <= FAQ_MAX_SLOTS; i++) {
+    pairs.push({
+      id: `page_faq_${i}_question`,
+      section,
+      label: `FAQ ${i} — Question`,
+      type: 'text',
+      optional: true,
+    });
+    pairs.push({
+      id: `page_faq_${i}_answer`,
+      section,
+      label: `FAQ ${i} — Answer`,
+      type: 'textarea',
+      optional: true,
+    });
+  }
+  return [
+    {
+      id: 'page_faq_count',
+      section,
+      label: 'How many FAQs would you like on this page?',
+      description: `Optional. Enter how many FAQs you want (up to ${FAQ_MAX_SLOTS}); leave blank until you decide. Matching FAQ blocks will appear below.`,
+      type: 'text',
+      optional: true,
+      placeholder: `1–${FAQ_MAX_SLOTS}`,
+    },
+    ...pairs,
+  ];
+})();
+
+const questionnairePageFollowUps: QuestionnaireQuestion[] = [
+  ...pageQuestions('Home', [
+    {
+      id: 'page_home_backgroundVideo',
+      label: 'Do you want a background video playing on the homepage?',
+      type: 'radio',
+      options: ['Yes', 'No', 'Not sure'],
+      optional: true,
+    },
+    {
+      id: 'page_home_businessIntro',
+      label: 'Enter a brief description about your business to have on the homepage',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'homepageNeeds',
+      label: 'Must-have homepage sections',
+      type: 'textarea',
+      optional: true,
+    },
+  ]),
+  ...pageQuestions('About', [
+    {
+      id: 'page_about_elements',
+      label: 'What should we include on your About page? (tick any that apply)',
+      type: 'checkbox',
+      options: [...ABOUT_FOCUS_OPTIONS],
+      gridColumns: 2,
+      optional: true,
+    },
+    {
+      id: 'page_about_team',
+      label: 'Team — information or names to include',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_about_mission',
+      label: 'Mission — information to include',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_about_story',
+      label: 'Story — information or narrative to include',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_about_credentials',
+      label: 'Credentials — qualifications or proof points to include',
+      type: 'textarea',
+      optional: true,
+    },
+  ]),
+  ...pageQuestions('Services', [
+    {
+      id: 'page_services_overview',
+      label: 'Describe the services or packages you want listed on this page',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_services_emphasis',
+      label: 'Anything you want emphasised (for example pricing tiers, comparisons, process steps)?',
+      type: 'textarea',
+      optional: true,
+    },
+  ]),
+  ...pageQuestions('Pricing', [
+    {
+      id: 'page_pricing_format',
+      label: 'How would you like pricing shown (for example simple list, cards, table, or enquiry-only)?',
+      type: 'text',
+      optional: true,
+    },
+    {
+      id: 'page_pricing_detail',
+      label: 'Describe your pricing structure, tiers, or what visitors should know',
+      type: 'textarea',
+      optional: true,
+    },
+  ]),
+  ...pageQuestions('Portfolio / Gallery', [
+    {
+      id: 'page_portfolio_content',
+      label: 'What projects, work, or images should appear in the gallery?',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_portfolio_structure',
+      label: 'Should work be grouped (for example by category or year), or a single grid?',
+      type: 'text',
+      optional: true,
+    },
+  ]),
+  ...testimonialsPageQuestions,
+  ...faqPageQuestions,
+  ...pageQuestions('Contact', [
+    {
+      id: 'page_contact_email',
+      label: 'Contact email',
+      type: 'email',
+      optional: true,
+    },
+    {
+      id: 'page_contact_phone',
+      label: 'Contact phone number',
+      type: 'text',
+      optional: true,
+    },
+    {
+      id: 'page_contact_address',
+      label: 'Business address',
+      type: 'textarea',
+      optional: true,
+    },
+    {
+      id: 'page_contact_social',
+      label: 'Social media links (one per line or separated by commas is fine)',
+      type: 'textarea',
+      optional: true,
+    },
+  ]),
+];
+
+const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'businessName',
     section: 'Business Basics',
@@ -106,14 +408,7 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
     section: 'Pages',
     label: 'Pages you would like',
     type: 'checkbox',
-    options: ['Home', 'About', 'Services', 'Pricing', 'Portfolio / Gallery', 'Testimonials', 'FAQ', 'Contact'],
-    optional: true,
-  },
-  {
-    id: 'homepageNeeds',
-    section: 'User Experience Preferences',
-    label: 'Must-have homepage sections',
-    type: 'textarea',
+    options: [...PAGE_OPTIONS_ORDER],
     optional: true,
   },
   {
@@ -148,27 +443,15 @@ export const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'hasPhotos',
     section: 'Images & Visuals',
-    label: 'Do you have your own photos?',
+    label: 'Do you have photos for your website?',
     type: 'radio',
-    options: ['Yes', 'No', 'Some'],
+    options: ['Yes', 'No'],
     optional: true,
   },
-  {
-    id: 'brandAssets',
-    section: 'Images & Visuals',
-    label: 'Images and videos for your website',
-    description: [
-      'Upload images and video you would like used on your site.',
-      'Naming: where placement matters, use a clear filename (for example, AboutLeadershipPhoto.jpg).',
-      'Priority: prefix must-have files with 1 so they stand out (for example, 1HomeHero.mp4).',
-    ].join('\n'),
-    type: 'files',
-    optional: true,
-    accept: 'image/*,video/*,.pdf,.zip,.doc,.docx,.ppt,.pptx,.xls,.xlsx',
-    maxFiles: 100,
-    maxSizeMB: 500,
-  },
+  ...questionnairePageFollowUps,
 ];
+
+export {questionnaireQuestions};
 
 export const questionnaireQuestionMap = new Map(
   questionnaireQuestions.map((question) => [question.id, question]),
@@ -184,3 +467,24 @@ export const questionnaireStepSections: string[][] = [
   ['Final Notes'],
   ['Images & Visuals'],
 ];
+
+export type QuestionnaireWizardStep =
+  | {kind: 'sections'; sectionKeys: string[]}
+  | {kind: 'pageFollowUp'; page: string};
+
+/** Base steps plus one follow-up step per selected page (in catalogue order), immediately after Pages. */
+export function buildQuestionnaireWizardSteps(
+  orderedSelectedPageLabels: string[],
+): QuestionnaireWizardStep[] {
+  const steps: QuestionnaireWizardStep[] = [];
+  for (const sectionKeys of questionnaireStepSections) {
+    steps.push({kind: 'sections', sectionKeys});
+    if (sectionKeys.length === 1 && sectionKeys[0] === 'Pages') {
+      for (const page of orderedSelectedPageLabels) {
+        steps.push({kind: 'pageFollowUp', page});
+      }
+    }
+  }
+  return steps;
+}
+

@@ -11,10 +11,7 @@ import Testimonials from '../components/Testimonials';
 import {usePageSeo} from '../seo/usePageSeo';
 import {pageMeta} from '../seo/seoConfig';
 import {servicesListSchema} from '../seo/structuredData';
-import {
-  useIsDesktop,
-  usePrefersReducedMotion,
-} from '../hooks/useMediaQuery';
+import {usePrefersReducedMotion} from '../hooks/useMediaQuery';
 
 const showDevDisclaimer = import.meta.env.VITE_SHOW_DEV_DISCLAIMER === 'true';
 
@@ -26,9 +23,8 @@ export default function Home() {
     meta: pageMeta.home,
     structuredData: [servicesListSchema],
   });
-  const isDesktop = useIsDesktop();
   const reducedMotion = usePrefersReducedMotion();
-  const parallaxOn = isDesktop && !reducedMotion;
+  const parallaxOn = !reducedMotion;
 
   const ctaRef = useRef<HTMLElement>(null);
   const {scrollYProgress: ctaProgress} = useScroll({

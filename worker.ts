@@ -1,6 +1,17 @@
-import {questionnaireQuestions} from './src/data/questionnaire';
 import {
+  orderedSelectedPages,
+  pageLabelFromDetailSection,
+  questionnaireQuestions,
+} from './src/data/questionnaire';
+import {buildClientUploadEmailParts} from './src/lib/clientUploadEmailParts';
+import {
+  pageSlugFromLabel,
+  verifyClientUploadToken,
+} from './src/lib/clientUploadToken';
+import {
+  assertAllowedClientPortalUpload,
   assertAllowedUpload,
+  buildClientMediaObjectKey,
   buildObjectKey,
 } from './src/lib/questionnaireUploadPolicy';
 import {
@@ -33,8 +44,13 @@ interface Env {
   R2_S3_ENDPOINT?: string;
   SENDGRID_API_KEY?: string;
   CONTACT_TO_EMAIL?: string;
+  /** Inbox for questionnaire submissions (internal SendGrid "to" address) */
+  QUESTIONNAIRE_TO_EMAIL?: string;
   CONTACT_FROM_EMAIL?: string;
   CONTACT_FROM_NAME?: string;
+  PUBLIC_SITE_URL?: string;
+  /** Required for personalised signed client upload links + presigned PUTs (+ use wrangler secret in prod). */
+  CLIENT_UPLOAD_SECRET?: string;
 }
 
 interface R2Bucket {
@@ -64,6 +80,13 @@ interface UploadedAsset {
 }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Enquiries inbox; CONTACT_TO_EMAIL is often confused with CONTACT_FROM_EMAIL (noreply). */
+function contactSubmissionRecipient(raw: string | undefined): string {
+  const t = raw?.trim();
+  if (!t || t.toLowerCase() === 'noreply@kicero.co.uk') return 'info@kicero.co.uk';
+  return t;
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -119,7 +142,7 @@ async function handleContact(request: Request, env: Env): Promise<Response> {
   }
 
   const sendgridKey = env.SENDGRID_API_KEY;
-  const toEmail = env.CONTACT_TO_EMAIL ?? 'info@kicero.co.uk';
+  const toEmail = contactSubmissionRecipient(env.CONTACT_TO_EMAIL);
   const fromEmail = env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
   const fromName = env.CONTACT_FROM_NAME ?? 'Website Contact Form';
 
@@ -341,6 +364,104 @@ async function handleQuestionnaireUpload(request: Request, env: Env): Promise<Re
   });
 }
 
+interface ClientUploadPresignPayload {
+  token?: unknown;
+  pageLabel?: unknown;
+  filename?: unknown;
+  contentType?: unknown;
+  size?: unknown;
+  batchId?: unknown;
+}
+
+async function handleClientUploadPresign(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return jsonResponse({error: 'Method not allowed.'}, 405);
+  }
+
+  const secret = env.CLIENT_UPLOAD_SECRET?.trim();
+  if (!secret) {
+    return jsonResponse({error: 'Client uploads are not configured.', code: 'NO_CLIENT_UPLOAD'}, 503);
+  }
+
+  const body = (await request.json().catch(() => null)) as ClientUploadPresignPayload | null;
+  if (!body) return jsonResponse({error: 'Invalid JSON body.'}, 400);
+
+  const token = typeof body.token === 'string' ? body.token : '';
+  const pageLabel = typeof body.pageLabel === 'string' ? body.pageLabel.trim() : '';
+  const filename = typeof body.filename === 'string' ? body.filename : '';
+  const contentType =
+    typeof body.contentType === 'string' && body.contentType.length > 0
+      ? body.contentType
+      : 'application/octet-stream';
+  const size = typeof body.size === 'number' ? body.size : Number.NaN;
+  const batchIdRaw = typeof body.batchId === 'string' ? body.batchId.trim() : '';
+
+  if (!token || !pageLabel || !filename) {
+    return jsonResponse({error: 'token, pageLabel, and filename are required.'}, 400);
+  }
+  if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
+    return jsonResponse({error: 'batchId must be a UUID.'}, 400);
+  }
+
+  const payload = await verifyClientUploadToken(secret, token);
+  if (!payload || !payload.pages.includes(pageLabel)) {
+    return jsonResponse({error: 'Invalid or expired upload link.'}, 403);
+  }
+
+  const pageSlug = pageSlugFromLabel(pageLabel);
+  const v = assertAllowedClientPortalUpload({
+    filename,
+    contentType,
+    size,
+  });
+  if (v.error) return jsonResponse({error: v.error}, 400);
+
+  const signingEnv: Partial<R2SigningEnv> = {
+    R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_NAME: env.R2_BUCKET_NAME,
+    R2_S3_ENDPOINT: env.R2_S3_ENDPOINT,
+  };
+
+  if (!hasR2SigningCredentials(signingEnv)) {
+    return jsonResponse(
+      {
+        error:
+          'Direct upload is not configured. Set R2_ACCOUNT_ID and R2 API token credentials on the worker.',
+        code: 'NO_PRESIGN',
+      },
+      503,
+    );
+  }
+
+  const key = buildClientMediaObjectKey({
+    folder: payload.folder,
+    pageSlug,
+    batchId: batchIdRaw,
+    filename,
+  });
+
+  try {
+    const putUrl = await getPresignedPutUrl(signingEnv, {
+      key,
+      contentType,
+      expiresIn: 3600,
+    });
+    const base = (env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
+    const publicUrl = base ? `${base}/${key}` : key;
+    return jsonResponse({
+      putUrl,
+      key,
+      url: publicUrl,
+      filename,
+      expiresIn: 3600,
+    });
+  } catch {
+    return jsonResponse({error: 'Could not create upload URL.'}, 500);
+  }
+}
+
 async function handleQuestionnaire(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({error: 'Method not allowed.'}, 405);
@@ -369,13 +490,34 @@ async function handleQuestionnaire(request: Request, env: Env): Promise<Response
   }
 
   const sendgridKey = env.SENDGRID_API_KEY;
-  const toEmail = env.CONTACT_TO_EMAIL ?? 'info@kicero.co.uk';
+  const toEmail = env.QUESTIONNAIRE_TO_EMAIL ?? 'forms@kicero.co.uk';
   const fromEmail = env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
   const fromName = env.CONTACT_FROM_NAME ?? 'Website Questionnaire';
   if (!sendgridKey) return jsonResponse({error: 'Server email configuration is missing.'}, 500);
 
+  const orderedPagesAnswer = orderedSelectedPages(
+    Array.isArray(answers.pagesWanted) ? (answers.pagesWanted as string[]) : [],
+  );
+
+  const clientUploadParts = await buildClientUploadEmailParts({
+    requestUrl: request.url,
+    publicSiteUrl: env.PUBLIC_SITE_URL,
+    clientName,
+    ref,
+    orderedPages: orderedPagesAnswer,
+    clientUploadSecret: env.CLIENT_UPLOAD_SECRET,
+    escapeHtmlBody: escapeHtml,
+  });
+
+  const clientUploadNotice = clientUploadParts.plainAppend;
+  const uploadHtmlExtra = clientUploadParts.htmlAppend;
+
   const sections = new Map<string, Array<{label: string; value: string}>>();
   for (const question of questionnaireQuestions) {
+    const pageOnlyLabel = pageLabelFromDetailSection(question.section);
+    if (pageOnlyLabel !== null && !orderedPagesAnswer.includes(pageOnlyLabel)) {
+      continue;
+    }
     const raw = answers[question.id];
     const value = Array.isArray(raw)
       ? raw.join(', ')
@@ -404,7 +546,7 @@ Client name: ${clientName}
 Client email: ${hasClientEmail ? clientEmail : 'Not provided'}
 Ref: ${ref || '—'}
 
-${sectionText}${filesText}
+${sectionText}${filesText}${clientUploadNotice}
 `;
 
   const sectionsHtml = Array.from(sections.entries())
@@ -432,7 +574,7 @@ ${sectionText}${filesText}
     subject,
     content: [
       {type: 'text/plain', value: textContent},
-      {type: 'text/html', value: `<h2>${escapeHtml(subject)}</h2>${sectionsHtml}${filesHtml}`},
+      {type: 'text/html', value: `<h2>${escapeHtml(subject)}</h2>${sectionsHtml}${filesHtml}${uploadHtmlExtra}`},
     ],
   };
 
@@ -457,7 +599,7 @@ ${sectionText}${filesText}
         {
           type: 'text/plain',
           value:
-            'Thanks for completing our website questionnaire. Kicero will be in touch.',
+            'Thanks for completing our website questionnaire.\n\nA member at Kicero will contact you as soon as possible.',
         },
       ],
     };
@@ -485,6 +627,9 @@ export default {
     }
     if (url.pathname === '/api/questionnaire/upload') {
       return handleQuestionnaireUpload(request, env);
+    }
+    if (url.pathname === '/api/client-upload/presign') {
+      return handleClientUploadPresign(request, env);
     }
     if (url.pathname === '/api/questionnaire') {
       return handleQuestionnaire(request, env);

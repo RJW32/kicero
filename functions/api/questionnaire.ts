@@ -1,10 +1,17 @@
-import {questionnaireQuestions} from '../../src/data/questionnaire';
+import {
+  orderedSelectedPages,
+  pageLabelFromDetailSection,
+  questionnaireQuestions,
+} from '../../src/data/questionnaire';
+import {buildClientUploadEmailParts} from '../../src/lib/clientUploadEmailParts';
 
 interface Env {
   SENDGRID_API_KEY?: string;
-  CONTACT_TO_EMAIL?: string;
+  QUESTIONNAIRE_TO_EMAIL?: string;
   CONTACT_FROM_EMAIL?: string;
   CONTACT_FROM_NAME?: string;
+  PUBLIC_SITE_URL?: string;
+  CLIENT_UPLOAD_SECRET?: string;
 }
 
 type PagesContext<TEnv> = {
@@ -67,13 +74,34 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   const sendgridKey = context.env.SENDGRID_API_KEY;
-  const toEmail = context.env.CONTACT_TO_EMAIL ?? 'info@kicero.co.uk';
+  const toEmail = context.env.QUESTIONNAIRE_TO_EMAIL ?? 'forms@kicero.co.uk';
   const fromEmail = context.env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
   const fromName = context.env.CONTACT_FROM_NAME ?? 'Website Questionnaire';
   if (!sendgridKey) return jsonResponse({error: 'Server email configuration is missing.'}, 500);
 
+  const orderedPagesAnswer = orderedSelectedPages(
+    Array.isArray(answers.pagesWanted) ? (answers.pagesWanted as string[]) : [],
+  );
+
+  const clientUploadParts = await buildClientUploadEmailParts({
+    requestUrl: context.request.url,
+    publicSiteUrl: context.env.PUBLIC_SITE_URL,
+    clientName,
+    ref,
+    orderedPages: orderedPagesAnswer,
+    clientUploadSecret: context.env.CLIENT_UPLOAD_SECRET,
+    escapeHtmlBody: escapeHtml,
+  });
+
+  const clientUploadNotice = clientUploadParts.plainAppend;
+  const uploadHtmlExtra = clientUploadParts.htmlAppend;
+
   const sections = new Map<string, Array<{label: string; value: string}>>();
   for (const question of questionnaireQuestions) {
+    const pageOnlyLabel = pageLabelFromDetailSection(question.section);
+    if (pageOnlyLabel !== null && !orderedPagesAnswer.includes(pageOnlyLabel)) {
+      continue;
+    }
     const raw = answers[question.id];
     const value = Array.isArray(raw)
       ? raw.join(', ')
@@ -106,6 +134,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     sectionText.trim(),
     '',
     filesText.trim(),
+    clientUploadNotice,
   ].join('\n');
   const payload = {
     personalizations: [{to: [{email: toEmail}]}],
@@ -119,7 +148,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
       {
         type: 'text/html',
-        value: `<h2>${escapeHtml(subject)}</h2><pre>${escapeHtml(sectionText + filesText)}</pre>`,
+        value: `<h2>${escapeHtml(subject)}</h2><pre>${escapeHtml(sectionText + filesText)}</pre>${uploadHtmlExtra}`,
       },
     ],
   };
@@ -151,7 +180,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           {
             type: 'text/plain',
             value:
-              'Thanks for completing our website questionnaire. Kicero will be in touch.',
+              'Thanks for completing our website questionnaire.\n\nA member at Kicero will contact you as soon as possible.',
           },
         ],
       }),

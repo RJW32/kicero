@@ -3,7 +3,7 @@ import {motion} from 'motion/react';
 const steps = [
   {
     title: 'Brief',
-    body: 'Tell us about your business, audience and what the site needs to do. We respond within 24 hours with an honest scope and price — no jargon, no upsell.',
+    body: 'Tell us about your business, audience and what the site needs to do. We respond as soon as we can with the next steps to get your website live.',
   },
   {
     title: 'Design',
@@ -15,7 +15,7 @@ const steps = [
   },
   {
     title: 'Launch',
-    body: 'Once you are happy, the site goes live on your domain. The first invoice goes out only after launch — never before. Then we handle the small updates each month.',
+    body: 'Once you are happy, the site goes live. The first invoice goes out only after launch — never before. Then we handle the small updates each month.',
   },
 ];
 

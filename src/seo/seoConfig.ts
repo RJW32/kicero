@@ -1,6 +1,9 @@
 export const SITE_URL = 'https://kicero.co.uk';
 export const SITE_NAME = 'Kicero';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/kicero-logo.png`;
+/** Pixel dimensions of `kicero-logo.png` (square brand mark, also used as favicon). */
+export const DEFAULT_OG_IMAGE_WIDTH = '1080';
+export const DEFAULT_OG_IMAGE_HEIGHT = '1080';
 export const SITE_LOCALE = 'en_GB';
 
 export interface PageMeta {
@@ -23,9 +26,9 @@ export const pageMeta: Record<string, PageMeta> = {
       'web design uk, affordable website, small business website, custom website, scottish web developer, cheap website design, website for small business uk, simple website',
   },
   services: {
-    title: 'Web Design Pricing from £20/month | Kicero',
+    title: 'Web Design Pricing from £15/month | Kicero',
     description:
-      'Transparent website pricing: £40 when your site goes live, then £20 per month for hosting, contact form and small updates. No payment until you are happy. Built by a Scottish studio for UK businesses.',
+      'Transparent website pricing: £40 at launch (£15 first month + £25 setup), then £15 per month for hosting, contact form and small updates. Domain management from £1/month extra. No payment until you are happy. Built by a Scottish studio for UK businesses.',
     path: '/services',
     keywords:
       'website pricing uk, cheap web design, monthly website plan, website hosting included, small business web design pricing, scottish web design',
@@ -59,6 +62,13 @@ export const pageMeta: Record<string, PageMeta> = {
     description:
       'Complete this short website questionnaire so we can understand your goals, style, and content needs.',
     path: '/questionnaire',
+    noindex: true,
+  },
+  clientUpload: {
+    title: 'Upload website images & videos | Kicero',
+    description:
+      'Choose photos and videos for each page of your upcoming site. Links are personalised to your questionnaire.',
+    path: '/client-upload',
     noindex: true,
   },
   privacy: {

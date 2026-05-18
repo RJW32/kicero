@@ -9,17 +9,10 @@ export default function Pricing() {
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="max-w-7xl mx-auto px-6 mb-24"
-      aria-labelledby="pricing-heading"
     >
       <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-brand-gray-400 mb-4 block">
         Transparent billing
       </span>
-      <h2
-        id="pricing-heading"
-        className="font-display text-4xl md:text-5xl font-bold uppercase tracking-tighter mb-6"
-      >
-        Pricing
-      </h2>
       <p className="text-brand-gray-600 max-w-2xl text-lg font-light leading-relaxed mb-12">
         You pay nothing until your website is live and you are happy with it. After launch, simple ongoing pricing covers hosting, upkeep, and a fair allowance for small updates.
       </p>
@@ -33,16 +26,18 @@ export default function Pricing() {
             </p>
             <div className="space-y-8">
               <div>
-                <p className="text-brand-gray-600 text-sm font-light mb-1">First payment (production)</p>
+                <p className="text-brand-gray-600 text-sm font-light mb-1">First payment (when you go live)</p>
                 <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£40</p>
                 <p className="text-brand-gray-500 text-sm mt-2 font-light">
-                  One-off — equivalent to two months of hosting, due when your site goes live.
+                  Your first month at{' '}
+                  <strong className="font-medium text-brand-black">£15</strong> plus a one-off{' '}
+                  <strong className="font-medium text-brand-black">£25</strong> setup fee — nothing more until the next monthly invoice.
                 </p>
               </div>
               <div className="h-px bg-brand-gray-200" />
               <div>
                 <p className="text-brand-gray-600 text-sm font-light mb-1">Then, every month</p>
-                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£20</p>
+                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£15</p>
                 <p className="text-brand-gray-500 text-sm mt-2 font-light">
                   Recurring from one month after your first payment.
                 </p>
@@ -59,7 +54,7 @@ export default function Pricing() {
           <div className="border border-brand-gray-200 p-6 md:p-8">
             <h3 className="font-display text-lg font-bold uppercase tracking-tight mb-4 flex items-center gap-2">
               <Check className="text-brand-gray-400 shrink-0" size={20} strokeWidth={2} />
-              Included in £20 / month
+              Included in £15 / month
             </h3>
             <ul className="space-y-3 text-brand-gray-600 font-light text-sm md:text-base leading-relaxed">
               <li>Hosting so your site stays online.</li>
@@ -84,16 +79,18 @@ export default function Pricing() {
               </p>
               <p className="text-brand-gray-600 text-sm font-light leading-relaxed mt-3">
                 Prefer your own domain? If you do not already own one, we can purchase it after your first payment and pass the registration cost through. Domain management adds{' '}
-                <strong className="font-medium text-brand-black">£2 / month</strong>.
+                <strong className="font-medium text-brand-black">£1 / month</strong>.
               </p>
             </div>
             <div className="border border-brand-gray-200 p-6">
               <Shield className="text-brand-gray-400 mb-3" size={22} strokeWidth={1.5} />
               <h3 className="font-bold text-sm uppercase tracking-widest mb-2">Summary</h3>
               <p className="text-brand-gray-600 text-sm font-light leading-relaxed">
-                <strong className="font-medium text-brand-black">£40</strong> when the site goes live, then{' '}
-                <strong className="font-medium text-brand-black">£20</strong> each month starting one month later. Optional custom domain: cost of registration plus{' '}
-                <strong className="font-medium text-brand-black">£2 / month</strong> for management.
+                <strong className="font-medium text-brand-black">£40</strong> at launch (
+                <strong className="font-medium text-brand-black">£15</strong> first month +{' '}
+                <strong className="font-medium text-brand-black">£25</strong> setup), then{' '}
+                <strong className="font-medium text-brand-black">£15</strong> each month starting one month later. Optional custom domain: cost of registration plus{' '}
+                <strong className="font-medium text-brand-black">£1 / month</strong> for management.
               </p>
             </div>
           </div>

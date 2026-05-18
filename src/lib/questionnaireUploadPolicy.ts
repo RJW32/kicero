@@ -44,6 +44,36 @@ export function buildObjectKey(params: {
   return `submissions/${day}/${params.submissionId}/${suffix}`;
 }
 
+/** Client media uploads: folder (name-based) → batch UUID → website page slug → dated filename. */
+export function buildClientMediaObjectKey(params: {
+  folder: string;
+  pageSlug: string;
+  batchId: string;
+  filename: string;
+}): string {
+  const folder = params.folder.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 80);
+  const page = params.pageSlug.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 64);
+  const batch = params.batchId.replace(/[^a-fA-F0-9-]/g, '').slice(0, 36);
+  const safeName = params.filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+  const day = new Date().toISOString().slice(0, 10);
+  return `client-media/${folder}/${batch}/${page}/${day}-${safeName}`;
+}
+
+/** Client upload page — images and videos only (no arbitrary documents). */
+export function assertAllowedClientPortalUpload(input: UploadValidationInput): {error?: string} {
+  const v = assertAllowedUpload(input);
+  if (v.error) return v;
+  const name = input.filename?.trim() ?? '';
+  const ct = (input.contentType ?? '').toLowerCase();
+  const mediaOk =
+    ct.startsWith('image/') ||
+    ct.startsWith('video/') ||
+    VIDEO_EXT.test(name) ||
+    IMAGE_EXT.test(name);
+  if (!mediaOk) return {error: 'Only images and videos are allowed on this page.'};
+  return {};
+}
+
 export function assertAllowedUpload(input: UploadValidationInput): {error?: string} {
   const maxBytes = input.maxBytes ?? DEFAULT_MAX_BYTES;
   const name = input.filename?.trim() ?? '';

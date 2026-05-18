@@ -37,8 +37,9 @@ export default function TermsPage() {
             <p>
               No payment is taken until your website has been published and
               you have confirmed you are happy with it. From that point, the
-              first payment of £40 (equivalent to two months of hosting) is
-              due, followed by £20 per month starting one month later.
+              first payment of £40 is due — your first month at £15 plus a
+              £25 one-off setup fee — followed by £15 per month starting one
+              month later.
             </p>
           </section>
 
@@ -47,7 +48,7 @@ export default function TermsPage() {
               2. What is included
             </h2>
             <p>
-              The £20 per month plan includes hosting, a working contact form,
+              The £15 per month plan includes hosting, a working contact form,
               and up to 30 minutes of small updates per month. Larger work is
               quoted separately. The contact form is enabled after your first
               payment is received.
@@ -61,7 +62,7 @@ export default function TermsPage() {
             <p>
               You may use a Kicero subdomain free of charge, or a custom
               domain. If we register a domain on your behalf, the registration
-              cost is passed through to you, and domain management adds £2 per
+              cost is passed through to you, and domain management adds £1 per
               month.
             </p>
           </section>

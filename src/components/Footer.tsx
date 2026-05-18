@@ -1,9 +1,14 @@
 import {motion} from 'motion/react';
 import {Link} from 'react-router-dom';
+import {useCookieConsent} from '../context/CookieConsentContext';
+
+type FooterLink =
+  | {label: string; to: string}
+  | {label: string; cookiePreferences: true};
 
 const footerNav: Array<{
   title: string;
-  links: Array<{label: string; to: string}>;
+  links: FooterLink[];
 }> = [
   {
     title: 'Studio',
@@ -20,11 +25,14 @@ const footerNav: Array<{
       {label: 'Blog', to: '/blog'},
       {label: 'Privacy Policy', to: '/privacy'},
       {label: 'Terms of Service', to: '/terms'},
+      {label: 'Cookie preferences', cookiePreferences: true},
     ],
   },
 ];
 
 export default function Footer() {
+  const {openPreferenceCentre} = useCookieConsent();
+
   return (
     <motion.footer
       initial={{opacity: 0, y: 24}}
@@ -40,7 +48,7 @@ export default function Footer() {
               to="/"
               className="text-2xl font-display font-bold tracking-tighter"
             >
-              KICERO
+              Kicero
             </Link>
             <p className="text-sm text-brand-gray-600 font-light leading-relaxed mt-4 max-w-sm">
               Affordable, high-end custom websites for small businesses across
@@ -61,13 +69,23 @@ export default function Footer() {
               </p>
               <ul className="space-y-3">
                 {column.links.map((link) => (
-                  <li key={link.to}>
-                    <Link
-                      to={link.to}
-                      className="text-sm text-brand-gray-700 hover:text-brand-black transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                  <li key={'to' in link ? link.to : link.label}>
+                    {'to' in link ? (
+                      <Link
+                        to={link.to}
+                        className="text-sm text-brand-gray-700 hover:text-brand-black transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openPreferenceCentre}
+                        className="text-sm text-brand-gray-700 hover:text-brand-black transition-colors"
+                      >
+                        {link.label}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

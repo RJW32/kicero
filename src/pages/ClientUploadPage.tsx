@@ -18,13 +18,11 @@ type RowStatus =
 function PageUploadRow({
   pageLabel,
   uploadToken,
-  batchId,
   uploadsAllowed,
   simulateUploadOnly,
 }: {
   pageLabel: string;
   uploadToken: string;
-  batchId: string;
   uploadsAllowed: boolean;
   /** Dev-only: show live controls and pretend uploads succeed without calling R2. */
   simulateUploadOnly?: boolean;
@@ -66,7 +64,6 @@ function PageUploadRow({
           filename: file.name,
           contentType: file.type || 'application/octet-stream',
           size: file.size,
-          batchId,
         }),
       });
       const data = (await req.json().catch(() => ({}))) as {
@@ -162,13 +159,6 @@ function PageUploadRow({
 
 export default function ClientUploadPage() {
   const location = useLocation();
-  const batchId = useMemo(() => {
-    try {
-      return crypto.randomUUID();
-    } catch {
-      return '00000000-0000-4000-8000-000000000001';
-    }
-  }, []);
 
   const searchParams = useMemo(
     () => new URLSearchParams(location.search),
@@ -228,7 +218,7 @@ export default function ClientUploadPage() {
       return `Your files are saved under bucket folder: client-media/${tokenPreview.folder}/`;
     }
     if (simulateUploadOnly) {
-      return 'Example bucket path when live: client-media/your-client-name-xxxx/{uuid-batch}/{home|about|…}/{date}-{filename}';
+      return 'Example bucket path when live: client-media/your-client-name-xxxx/{home|about|…}/{date}-{filename}';
     }
     return null;
   })();
@@ -313,7 +303,6 @@ export default function ClientUploadPage() {
                 <PageUploadRow
                   pageLabel={page}
                   uploadToken={rawToken}
-                  batchId={batchId}
                   uploadsAllowed={uploadsAllowed}
                   simulateUploadOnly={simulateUploadOnly}
                 />

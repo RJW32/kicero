@@ -267,13 +267,9 @@ app.post('/api/client-upload/presign', async (req, res) => {
       ? body.contentType
       : 'application/octet-stream';
   const size = typeof body.size === 'number' ? body.size : Number.NaN;
-  const batchIdRaw = typeof body.batchId === 'string' ? body.batchId.trim() : '';
 
   if (!token || !pageLabel || !filename) {
     return res.status(400).json({error: 'token, pageLabel, and filename are required.'});
-  }
-  if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
-    return res.status(400).json({error: 'batchId must be a UUID.'});
   }
 
   let payload;
@@ -303,7 +299,6 @@ app.post('/api/client-upload/presign', async (req, res) => {
     const key = buildClientMediaObjectKey({
       folder: payload.folder,
       pageSlug,
-      batchId: batchIdRaw,
       filename,
     });
     const putUrl = await getPresignedPutUrl(signingEnv, {

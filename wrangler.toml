@@ -8,7 +8,9 @@ R2_ACCOUNT_ID = "518ebe3454726f8ad23f5c25cc01f13e"
 # EU-only: use https://<R2_ACCOUNT_ID>.eu.r2.cloudflarestorage.com if your bucket was created in the EU jurisdiction.
 # R2_S3_ENDPOINT = "https://518ebe3454726f8ad23f5c25cc01f13e.eu.r2.cloudflarestorage.com"
 R2_PUBLIC_BASE = "https://uploads.kicero.co.uk"
-R2_BUCKET_NAME = "kicero-questionnaire-uploads"
+R2_BUCKET_NAME = "kicero-client-uploads"
+# Canonical site origin for questionnaire/client-upload links in emails (override via dashboard if needed).
+PUBLIC_SITE_URL = "https://kicero.co.uk"
 CONTACT_TO_EMAIL = "info@kicero.co.uk"
 QUESTIONNAIRE_TO_EMAIL = "forms@kicero.co.uk"
 CONTACT_FROM_EMAIL = "noreply@kicero.co.uk"
@@ -22,4 +24,4 @@ html_handling = "auto-trailing-slash"
 
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "kicero-questionnaire-uploads"
+bucket_name = "kicero-client-uploads"

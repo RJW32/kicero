@@ -44,19 +44,17 @@ export function buildObjectKey(params: {
   return `submissions/${day}/${params.submissionId}/${suffix}`;
 }
 
-/** Client media uploads: folder (name-based) → batch UUID → website page slug → dated filename. */
+/** Client media uploads: folder (name-based) → website page slug → dated filename. */
 export function buildClientMediaObjectKey(params: {
   folder: string;
   pageSlug: string;
-  batchId: string;
   filename: string;
 }): string {
   const folder = params.folder.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 80);
   const page = params.pageSlug.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 64);
-  const batch = params.batchId.replace(/[^a-fA-F0-9-]/g, '').slice(0, 36);
   const safeName = params.filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
   const day = new Date().toISOString().slice(0, 10);
-  return `client-media/${folder}/${batch}/${page}/${day}-${safeName}`;
+  return `client-media/${folder}/${page}/${day}-${safeName}`;
 }
 
 /** Client upload page — images and videos only (no arbitrary documents). */

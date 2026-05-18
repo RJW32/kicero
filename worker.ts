@@ -370,7 +370,6 @@ interface ClientUploadPresignPayload {
   filename?: unknown;
   contentType?: unknown;
   size?: unknown;
-  batchId?: unknown;
 }
 
 async function handleClientUploadPresign(request: Request, env: Env): Promise<Response> {
@@ -394,13 +393,9 @@ async function handleClientUploadPresign(request: Request, env: Env): Promise<Re
       ? body.contentType
       : 'application/octet-stream';
   const size = typeof body.size === 'number' ? body.size : Number.NaN;
-  const batchIdRaw = typeof body.batchId === 'string' ? body.batchId.trim() : '';
 
   if (!token || !pageLabel || !filename) {
     return jsonResponse({error: 'token, pageLabel, and filename are required.'}, 400);
-  }
-  if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
-    return jsonResponse({error: 'batchId must be a UUID.'}, 400);
   }
 
   const payload = await verifyClientUploadToken(secret, token);
@@ -438,7 +433,6 @@ async function handleClientUploadPresign(request: Request, env: Env): Promise<Re
   const key = buildClientMediaObjectKey({
     folder: payload.folder,
     pageSlug,
-    batchId: batchIdRaw,
     filename,
   });
 

@@ -49,9 +49,19 @@ export function pageLabelFromDetailSection(section: string): string | null {
   return section.slice(PAGE_SECTION_PREFIX.length);
 }
 
+/** Normalize labels so token / questionnaire answers survive NBSP or stray whitespace drift. */
+function normalizePageLabelForMatch(label: string): string {
+  return label
+    .replace(/\u00a0/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 export function orderedSelectedPages(pagesRaw: string | string[] | undefined): string[] {
   const selected = Array.isArray(pagesRaw) ? pagesRaw : [];
-  return PAGE_OPTIONS_ORDER.filter((p) => selected.includes(p));
+  const normalizedSelected = new Set(selected.map(normalizePageLabelForMatch));
+  return PAGE_OPTIONS_ORDER.filter((p) => normalizedSelected.has(normalizePageLabelForMatch(p)));
 }
 
 /** Client-facing stub upload UI (linked from questionnaire notification email). */

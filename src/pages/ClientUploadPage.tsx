@@ -183,18 +183,26 @@ export default function ClientUploadPage() {
   );
   const pagesFromLegacy = useMemo(() => orderedSelectedPages(legacyRaw), [legacyRaw]);
 
+  /** Signed links (`t=`): pages come only from the token payload — never merge loose `pages=` query params. */
   const pages = useMemo(() => {
-    if (rawToken.length > 0 && tokenPreview?.pages?.length && !tokenExpired) {
-      return orderedSelectedPages(tokenPreview.pages as string[]);
-    }
-    return pagesFromLegacy;
+    if (!rawToken.length) return pagesFromLegacy;
+    if (!tokenPreview?.pages?.length || tokenExpired) return [];
+    return orderedSelectedPages(tokenPreview.pages as string[]);
   }, [rawToken.length, tokenPreview?.pages, tokenExpired, pagesFromLegacy]);
 
-  const tokenMalformed = rawToken.length > 0 && !tokenPreview?.pages?.length;
+  const tokenMalformed = rawToken.length > 0 && tokenPreview === null;
+
+  const tokenPagesDecodeButUnmatched =
+    rawToken.length > 0 &&
+    tokenPreview !== null &&
+    !tokenExpired &&
+    Boolean(tokenPreview.pages?.length) &&
+    pages.length === 0;
 
   const uploadsAllowed =
     rawToken.length > 0 &&
-    Boolean(tokenPreview?.pages?.length) &&
+    tokenPreview !== null &&
+    pages.length > 0 &&
     !tokenMalformed &&
     !tokenExpired;
 
@@ -211,17 +219,33 @@ export default function ClientUploadPage() {
   const hasPages = pages.length > 0;
 
   const simulateUploadOnly =
-    devLayoutPreview && hasPages && !uploadsAllowed && !tokenMalformed && !tokenExpired;
+    devLayoutPreview &&
+    hasPages &&
+    !uploadsAllowed &&
+    !tokenMalformed &&
+    !tokenExpired &&
+    !tokenPagesDecodeButUnmatched;
 
-  const folderBanner = (() => {
-    if (uploadsAllowed && tokenPreview?.folder) {
-      return `Your files are saved under bucket folder: client-media/${tokenPreview.folder}/`;
-    }
-    if (simulateUploadOnly) {
-      return 'Example bucket path when live: client-media/your-client-name-xxxx/{home|about|…}/{date}-{filename}';
-    }
-    return null;
-  })();
+  const opsBucketDetails =
+    uploadsAllowed && tokenPreview?.folder ? (
+      <details className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/55">
+        <summary className="cursor-pointer select-none text-white/70 outline-offset-2 hover:text-white/85">
+          Technical details (storage path)
+        </summary>
+        <p className="mt-2 font-mono text-[11px] leading-relaxed text-emerald-100/80">
+          client-media/{tokenPreview.folder}/…
+        </p>
+      </details>
+    ) : simulateUploadOnly ? (
+      <details className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/55">
+        <summary className="cursor-pointer select-none text-white/70 outline-offset-2 hover:text-white/85">
+          Example storage layout (dev preview)
+        </summary>
+        <p className="mt-2 font-mono text-[11px] leading-relaxed text-white/60">
+          client-media/your-client-name-xxxx/[page]/[date]-[filename]
+        </p>
+      </details>
+    ) : null;
 
   return (
     <div className="pt-20 pb-16">
@@ -231,12 +255,16 @@ export default function ClientUploadPage() {
             Website images &amp; videos
           </h1>
           <p className="text-sm leading-relaxed text-white/70 md:text-base">
-            Use one section per page of your upcoming site.&nbsp;
-            For a <strong className="text-white/85">draft layout preview</strong> in dev without a signing
-            secret, use <code className="text-white/85">?preview=1</code>{' '}
-            alongside your <code className="text-white/85">pages</code> query.&nbsp;
-            Signed questionnaire links skip that and upload for real into your R2 bucket.
+            Upload photos and videos for each page you chose on your questionnaire. Each section below matches
+            one page on your site — use as many files as you need per section.
           </p>
+          {import.meta.env.DEV ? (
+            <p className="text-xs leading-relaxed text-white/45">
+              Dev: draft UI without signing uses{' '}
+              <code className="text-white/70">?preview=1&amp;pages=Home&amp;pages=About</code>. Signed links from
+              questionnaire emails upload for real.
+            </p>
+          ) : null}
         </header>
 
         {devLayoutPreview ? (
@@ -272,13 +300,37 @@ export default function ClientUploadPage() {
           </p>
         ) : null}
 
-        {folderBanner ? (
-          <p className="rounded-md border border-emerald-500/20 bg-emerald-950/25 px-3 py-2 text-xs leading-relaxed text-emerald-100/90">
-            {folderBanner}
+        {tokenPagesDecodeButUnmatched ? (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-950/35 px-4 py-4 text-amber-100/90">
+            <strong className="text-amber-50">This link&apos;s page list could not be matched.</strong>{' '}
+            Please open the upload URL exactly as sent by Kicero, or reply to your questionnaire email so we can
+            send a fresh link.
           </p>
         ) : null}
 
-        {!hasPages ? (
+        {uploadsAllowed ? (
+          <p className="rounded-md border border-emerald-500/20 bg-emerald-950/25 px-3 py-2 text-sm leading-relaxed text-emerald-100/90">
+            You&apos;re ready to upload — choose files under each page below. Everything is sent securely to our
+            team for your build.
+          </p>
+        ) : null}
+
+        {opsBucketDetails}
+
+        {hasPages ? (
+          <ul className="flex flex-col gap-3">
+            {pages.map((page) => (
+              <li key={page}>
+                <PageUploadRow
+                  pageLabel={page}
+                  uploadToken={rawToken}
+                  uploadsAllowed={uploadsAllowed}
+                  simulateUploadOnly={simulateUploadOnly}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : !tokenMalformed && !tokenExpired && !tokenPagesDecodeButUnmatched ? (
           <p className="rounded-lg border border-white/15 bg-white/5 px-4 py-4 text-white/75">
             <strong className="text-white/85">Invalid or expired link.</strong>{' '}
             {devLayoutPreview ? (
@@ -296,20 +348,7 @@ export default function ClientUploadPage() {
               </>
             )}
           </p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {pages.map((page) => (
-              <li key={page}>
-                <PageUploadRow
-                  pageLabel={page}
-                  uploadToken={rawToken}
-                  uploadsAllowed={uploadsAllowed}
-                  simulateUploadOnly={simulateUploadOnly}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        ) : null}
       </div>
     </div>
   );

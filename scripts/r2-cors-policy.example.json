@@ -5,9 +5,10 @@
         "origins": [
           "https://kicero.co.uk",
           "https://www.kicero.co.uk",
-          "http://localhost:3000"
+          "http://localhost:3000",
+          "http://127.0.0.1:3000"
         ],
-        "methods": ["GET", "PUT", "HEAD"],
+        "methods": ["GET", "HEAD", "PUT", "OPTIONS"],
         "headers": ["*"]
       },
       "exposeHeaders": ["ETag"],

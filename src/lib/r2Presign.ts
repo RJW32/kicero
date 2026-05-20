@@ -29,6 +29,9 @@ export async function getPresignedPutUrl(
     env.R2_S3_ENDPOINT?.trim() ||
     `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 
+  // Default SDK behaviour (WHEN_SUPPORTED) adds checksum query params to presigned PUTs.
+  // Browser XHR/fetch uploads cannot satisfy those checksums reliably, so R2 rejects the PUT
+  // (often 401/403) and error responses lack CORS — Safari/chrome then report CORS failures.
   const client = new S3Client({
     region: 'auto',
     endpoint,
@@ -36,6 +39,7 @@ export async function getPresignedPutUrl(
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
     },
+    requestChecksumCalculation: 'WHEN_REQUIRED',
   });
 
   const command = new PutObjectCommand({

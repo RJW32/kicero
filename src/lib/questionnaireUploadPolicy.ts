@@ -57,9 +57,15 @@ export function buildClientMediaObjectKey(params: {
   return `client-media/${folder}/${page}/${day}-${safeName}`;
 }
 
+/** Combined size cap for all media files under one page on the client upload portal (presign path). */
+export const CLIENT_PORTAL_MAX_BYTES_TOTAL_PER_PAGE = 500 * 1024 * 1024; // 500 MB total per page
+
 /** Client upload page — images and videos only (no arbitrary documents). */
 export function assertAllowedClientPortalUpload(input: UploadValidationInput): {error?: string} {
-  const v = assertAllowedUpload(input);
+  const v = assertAllowedUpload({
+    ...input,
+    maxBytes: input.maxBytes ?? DEFAULT_MAX_BYTES,
+  });
   if (v.error) return v;
   const name = input.filename?.trim() ?? '';
   const ct = (input.contentType ?? '').toLowerCase();

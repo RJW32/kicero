@@ -32,9 +32,14 @@ export async function getPresignedPutUrl(
   // Default SDK behaviour (WHEN_SUPPORTED) adds checksum query params to presigned PUTs.
   // Browser XHR/fetch uploads cannot satisfy those checksums reliably, so R2 rejects the PUT
   // (often 401/403) and error responses lack CORS — Safari/chrome then report CORS failures.
+  //
+  // forcePathStyle: R2 resolves path-style uploads reliably; browser sends the same Host the URL was signed for.
+  // signableHeaders: include content-type — otherwise X-Amz-SignedHeaders=host only and R2 rejects the PUT
+  // while preflight OPTIONS still succeeds; Safari masks the failure as “CORS + 401”.
   const client = new S3Client({
     region: 'auto',
     endpoint,
+    forcePathStyle: true,
     credentials: {
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,
@@ -48,5 +53,8 @@ export async function getPresignedPutUrl(
     ContentType: params.contentType || 'application/octet-stream',
   });
 
-  return getSignedUrl(client, command, {expiresIn: params.expiresIn ?? 3600});
+  return getSignedUrl(client, command, {
+    expiresIn: params.expiresIn ?? 3600,
+    signableHeaders: new Set(['host', 'content-type']),
+  });
 }

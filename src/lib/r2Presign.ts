@@ -33,16 +33,20 @@ export async function getPresignedPutUrl(
   // Browser XHR/fetch uploads cannot satisfy those checksums reliably, so R2 rejects the PUT
   // (often 401/403) and error responses lack CORS — Safari/Chrome then report CORS failures.
   //
-  // forcePathStyle: R2 resolves path-style uploads reliably; browser sends the same Host the URL was signed for.
   // signableHeaders: only sign 'host'. Signing 'content-type' causes R2 to validate the browser's
   // Content-Type header character-for-character against the signed value. Any browser normalisation
   // (e.g. appending '; charset=utf-8') triggers SignatureDoesNotMatch → 401, which R2 returns without
   // CORS headers so the browser masks it as a CORS error. File type is already validated server-side
   // by assertAllowedClientPortalUpload before the presigned URL is ever issued.
+  //
+  // forcePathStyle is intentionally NOT set. Cloudflare R2 normalises path-style requests to
+  // virtual-hosted style before signature verification, so a path-style presigned URL
+  // (signed host = <accountId>.r2.cloudflarestorage.com) fails with SignatureDoesNotMatch → 401.
+  // Without forcePathStyle the SDK generates virtual-hosted URLs
+  // (signed host = <bucket>.<accountId>.r2.cloudflarestorage.com) which R2 verifies correctly.
   const client = new S3Client({
     region: 'auto',
     endpoint,
-    forcePathStyle: true,
     credentials: {
       accessKeyId: env.R2_ACCESS_KEY_ID,
       secretAccessKey: env.R2_SECRET_ACCESS_KEY,

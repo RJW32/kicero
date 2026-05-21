@@ -87,7 +87,11 @@ function putWithProgress(args: {
       }
     };
     xhr.onerror = () =>
-      reject(new Error('Network error during upload (check connection or CORS).'));
+      reject(
+        new Error(
+          `Upload blocked by browser${xhr.status ? ` (HTTP ${xhr.status})` : ''} — likely a network or CORS error.`,
+        ),
+      );
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         args.onProgress(100);

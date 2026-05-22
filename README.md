@@ -101,14 +101,11 @@ baked into the static HTML.
 3. **Google Business Profile** — create a profile (Scotland-based, UK service
    area). Even a UK-wide service business benefits significantly from a local
    listing.
-4. **Wikidata / other `sameAs` profiles** — bake verification URLs into the
-   Organization schema at build time via `.env`:
-   - `VITE_WIKIDATA_ENTITY_URL` — canonical item URL, e.g.
-     `https://www.wikidata.org/wiki/Q123456789`
-   - `VITE_ORGANIZATION_SAME_AS` — optional comma-separated URLs (LinkedIn
-     company, Companies House, Crunchbase, …)
-   Each profile should also list **kicero.co.uk** as its official website so
-   the signal is bidirectional.
+4. **Wikidata / other `sameAs` profiles** — Wikidata ([Q139890611](https://www.wikidata.org/wiki/Q139890611))
+   is included in Organization JSON-LD by default (`src/seo/seoConfig.ts`). For more
+   URLs at build time, set `VITE_ORGANIZATION_SAME_AS` in `.env` (comma-separated:
+   LinkedIn company, Companies House, …). Each profile should also list
+   **https://kicero.co.uk** as its official website.
 5. **Open Graph card** — default social image is `public/og-image.svg` (1200×630).
    For maximum scraper compatibility you can add a matching `og-image.png`.
 

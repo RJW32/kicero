@@ -93,10 +93,9 @@ export const organizationSchema = {
     name: SITE_NAME,
     logo: `${SITE_URL}/kicero-logo.png`,
   },
-  // Off-site identity profiles. See `extraOrganizationSameAs` in
-  // `seoConfig.ts` (build-time env: VITE_WIKIDATA_ENTITY_URL,
-  // VITE_ORGANIZATION_SAME_AS). Each external profile should also list
-  // kicero.co.uk as its official website for bidirectional verification.
+  // Off-site identity profiles. Wikidata Q139890611 is always merged from
+  // `extraOrganizationSameAs` in `seoConfig.ts`; add LinkedIn etc. via
+  // `VITE_ORGANIZATION_SAME_AS` at build time.
   sameAs: [...extraOrganizationSameAs] as string[],
 };
 

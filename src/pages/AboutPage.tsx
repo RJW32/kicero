@@ -33,8 +33,15 @@ const SECTIONS = [
         </p>
         <p>
           The studio was founded in 2026 with one goal: give UK small
-          businesses websites that look as considered as the work bigger
-          agencies charge tens of thousands for, without the price tag.
+          businesses, start-ups and individuals impressive websites they are
+          happy with, without having to suffer such a large price tag.
+        </p>
+        <p>
+          Many people quietly spend more on builders such as Wix over time —
+          subscriptions, upgrades and bolt-ons — than a Kicero website costs all
+          in, yet still wind up with a sub-par shopfront because DIY platforms
+          are no replacement for professional-grade design when you aren&apos;t
+          a professional.
         </p>
       </>
     ),
@@ -138,10 +145,13 @@ const SECTIONS = [
     body: (
       <>
         <p>
-          Most UK small businesses are quoted between £1,500 and £5,000 for a
+          Most UK small businesses are quoted between £500 and £1,500 for a
           website that does, in practice, very little — and then charged
-          £60–£150 every time they want a small edit. Kicero was founded in
-          2026 to change that.
+          £60–£150 every time they want a small edit. Plenty of founders also
+          cumulatively spend more on builders such as Wix than they would pay
+          for a Kicero site, simply to keep a middling DIY result online,
+          because DIY tools assume you&apos;ll put in work that belongs to a
+          professional. Kicero was founded in 2026 to change that.
         </p>
         <p>
           The idea is simple: build the website properly the first time, host

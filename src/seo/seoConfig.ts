@@ -12,9 +12,16 @@ export const DEFAULT_OG_IMAGE_HEIGHT = '630';
 export const SITE_LOCALE = 'en_GB';
 
 /**
- * Extra `Organization.sameAs` URLs (Wikidata, LinkedIn company, Companies
- * House profile, …). Injected via Vite env at **build time** — set these in
- * `.env` (or your CI/deploy environment) before `npm run build` / `npm run cf:deploy`.
+ * Canonical Wikidata item for the Kicero organization (`sameAs` / Knowledge Graph).
+ * @see https://www.wikidata.org/wiki/Q139890611
+ */
+export const WIKIDATA_ORGANIZATION_ENTITY =
+  'https://www.wikidata.org/wiki/Q139890611' as const;
+
+/**
+ * Extra `Organization.sameAs` URLs (Wikidata is always included below; add
+ * LinkedIn, Companies House, etc. via `VITE_ORGANIZATION_SAME_AS` or optional
+ * `VITE_WIKIDATA_ENTITY_URL` override). Values are injected at **build time**.
  *
  * Canonical Wikidata wiki URL shape: `https://www.wikidata.org/wiki/Q123456789`
  */
@@ -26,14 +33,17 @@ function splitCommaSeparatedUrls(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-const wikidataEntityUrl =
+const wikidataEntityUrlEnv =
   typeof import.meta.env.VITE_WIKIDATA_ENTITY_URL === 'string'
     ? import.meta.env.VITE_WIKIDATA_ENTITY_URL.trim()
     : '';
 
 export const extraOrganizationSameAs: readonly string[] = [
   ...new Set([
-    ...(wikidataEntityUrl ? [wikidataEntityUrl] : []),
+    WIKIDATA_ORGANIZATION_ENTITY,
+    ...(wikidataEntityUrlEnv && wikidataEntityUrlEnv !== WIKIDATA_ORGANIZATION_ENTITY
+      ? [wikidataEntityUrlEnv]
+      : []),
     ...splitCommaSeparatedUrls(import.meta.env.VITE_ORGANIZATION_SAME_AS),
   ]),
 ];

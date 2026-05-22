@@ -62,8 +62,9 @@ export default function Hero() {
             </span>
             <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.9] mb-8 break-words">
               WE BUILD <br />
-              COMMANDING <br />
-              <span className="italic">PRESENCE.</span>
+              <span className="italic">NOTABLE AND EFFECTIVE</span>
+              <br />
+              WEBSITES.
             </h1>
             <p className="max-w-md text-lg text-brand-gray-700 font-light leading-relaxed mb-10">
               Affordable, high-end custom websites for small businesses,

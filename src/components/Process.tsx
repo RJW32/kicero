@@ -3,19 +3,19 @@ import {motion} from 'motion/react';
 const steps = [
   {
     title: 'Brief',
-    body: 'Tell us about your business, audience and what the site needs to do. We respond as soon as we can with the next steps to get your website live.',
+    body: 'Reach out however suits you — our contact page or email — to tell us you are interested in a new site. We reply with practical next steps and send over our questionnaire so we can capture your business, audience, priorities, and any examples you already like. Answer in your own time; anything that does not fit the form can go in free text.',
   },
   {
     title: 'Design',
-    body: 'We design a layout that fits your brand and conversion goals. You review, give feedback, and we iterate until it actually feels right.',
+    body: 'We read every response and translate it into a clear structure and visual direction that stays true to your brand, not an off‑the‑shelf template. Layouts, typography, imagery, and key messages are wired up with speed, accessibility, and a strong mobile experience in mind.',
   },
   {
-    title: 'Build',
-    body: 'We build the site on enterprise-grade infrastructure with a focus on speed, mobile experience and SEO. You see progress as it goes.',
+    title: 'Review',
+    body: 'You receive a preview of your new site so you can actually use it — read copy, navigate pages, and sanity‑check imagery. Share what should change — wording tweaks, reordering sections, sharper calls‑to‑action, colour refinement — and we iterate with you until you are confident it is launch‑ready.',
   },
   {
     title: 'Launch',
-    body: 'Once you are happy, the site goes live. The first invoice goes out only after launch — never before. Then we handle the small updates each month.',
+    body: 'Once you are happy, the site goes live. The first invoice goes out only after launch — never before. We handle any small updates you have each month.',
   },
 ];
 

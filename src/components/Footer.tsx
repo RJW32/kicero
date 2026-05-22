@@ -1,6 +1,8 @@
 import {motion} from 'motion/react';
 import {Link} from 'react-router-dom';
 import {useCookieConsent} from '../context/CookieConsentContext';
+import kiceroLogoBlack from '../assets/Logo/Kicero Logo Black.svg';
+import kiceroLogoNameBlack from '../assets/Logo/Kicero Logo Name Black.svg';
 
 type FooterLink =
   | {label: string; to: string}
@@ -14,6 +16,7 @@ const footerNav: Array<{
     title: 'Studio',
     links: [
       {label: 'Home', to: '/'},
+      {label: 'About', to: '/about'},
       {label: 'Pricing & Services', to: '/services'},
       {label: 'Portfolio', to: '/portfolio'},
       {label: 'Contact', to: '/contact'},
@@ -46,9 +49,27 @@ export default function Footer() {
           <div className="md:col-span-2">
             <Link
               to="/"
-              className="text-2xl font-display font-bold tracking-tighter"
+              aria-label="Kicero home"
+              className="inline-flex items-center gap-1.5"
             >
-              Kicero
+              <img
+                src={kiceroLogoNameBlack}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                className="h-[22px] sm:h-6 w-auto object-contain"
+              />
+              <img
+                src={kiceroLogoBlack}
+                alt=""
+                aria-hidden="true"
+                width={21}
+                height={21}
+                loading="lazy"
+                decoding="async"
+                className="h-[21px] w-auto object-contain -translate-y-[0px]"
+              />
             </Link>
             <p className="text-sm text-brand-gray-600 font-light leading-relaxed mt-4 max-w-sm">
               Affordable, high-end custom websites for small businesses across

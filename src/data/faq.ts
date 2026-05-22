@@ -27,7 +27,7 @@ export const faqItems: ReadonlyArray<FaqItem> = [
   {
     question: 'How long does it take to build a Kicero website?',
     answer:
-      'Most simple business websites are designed and built within 2–4 weeks from the initial brief, depending on how quickly content and feedback come back from you. Larger projects are quoted with a longer timeline.',
+      'Most simple business websites are designed and built within 2–4 weeks from the initial brief, depending on how quickly content and feedback come back from you. That estimated timeframe can vary depending on Kicero workload at the time, which is why we give you a more accurate estimate when we begin your project. Larger projects are quoted with a longer timeline.',
   },
   {
     question: 'What is included in the £15 per month?',
@@ -35,9 +35,9 @@ export const faqItems: ReadonlyArray<FaqItem> = [
       'Hosting on enterprise-grade infrastructure (Cloudflare), a working contact form, security and SSL, and up to 30 minutes of small updates per month at no extra cost. Larger pieces of work are quoted separately.',
   },
   {
-    question: 'Can I update the website myself?',
+    question: 'What if I need to make a small update to my website?',
     answer:
-      'Most small businesses prefer to send small edits and let us handle them — that is what the included 30 minutes per month is for. If you want a full self-edit content system we can scope that as a custom add-on.',
+      'You can email Kicero and ask for any small update to the website — as long as it takes under 30 minutes for Kicero to complete, there is no charge for the update. Kicero will let you know before they begin the work if they think it will take more than 30 minutes.',
   },
   {
     question: 'What if I want to cancel?',

@@ -42,6 +42,7 @@ const blogSlugs = [
 
 const routes = [
   '/',
+  '/about',
   '/services',
   '/portfolio',
   '/contact',
@@ -50,6 +51,11 @@ const routes = [
   '/privacy',
   '/terms',
 ];
+
+// Pre-render the 404 page too, but write it to `dist/not_found.html` instead
+// of `dist/404/index.html` so Cloudflare's `not_found_handling = "404-page"`
+// can serve it with a real HTTP 404 status (kills soft-404s).
+const notFoundRoute = '/404';
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -200,14 +206,50 @@ async function writeRouteHtml(route, html) {
   console.log(`  wrote ${target.replace(projectRoot + '/', '')}`);
 }
 
+// Per-URL freshness signals. `lastmod` is what Google uses to decide when to
+// recrawl, so honest dates beat "everything updated today every build".
+const FALLBACK_LASTMOD = '2026-05-22';
+const BLOG_LASTMOD = {
+  'how-much-should-a-small-business-website-cost-uk-2026': '2026-05-01',
+  'why-scottish-small-businesses-need-fast-simple-websites': '2026-04-22',
+  'custom-website-vs-wix-vs-squarespace': '2026-05-02',
+};
+const ROUTE_LASTMOD = {
+  '/': '2026-05-22',
+  '/about': '2026-05-22',
+  '/services': '2026-05-20',
+  '/portfolio': '2026-05-20',
+  '/contact': '2026-05-20',
+  '/blog': '2026-05-22',
+  '/privacy': '2026-05-20',
+  '/terms': '2026-05-20',
+};
+
+function routeLastMod(route) {
+  if (ROUTE_LASTMOD[route]) return ROUTE_LASTMOD[route];
+  if (route.startsWith('/blog/')) {
+    const slug = route.slice('/blog/'.length);
+    return BLOG_LASTMOD[slug] ?? FALLBACK_LASTMOD;
+  }
+  return FALLBACK_LASTMOD;
+}
+
+function routePriorityAndFreq(route) {
+  if (route === '/') return {priority: '1.0', changefreq: 'monthly'};
+  if (route === '/blog') return {priority: '0.8', changefreq: 'weekly'};
+  if (route.startsWith('/blog/')) return {priority: '0.7', changefreq: 'yearly'};
+  if (route === '/privacy' || route === '/terms')
+    return {priority: '0.3', changefreq: 'yearly'};
+  return {priority: '0.8', changefreq: 'monthly'};
+}
+
 function buildSitemap(allRoutes) {
-  const today = new Date().toISOString().slice(0, 10);
   const urls = allRoutes
     .map((route) => {
       const loc = `${SITE_ORIGIN}${route === '/' ? '' : route}`;
-      const priority =
-        route === '/' ? '1.0' : route.startsWith('/blog/') ? '0.7' : '0.8';
-      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+      const lastmod = routeLastMod(route);
+      const {priority, changefreq} = routePriorityAndFreq(route);
+      return `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
     })
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
@@ -226,11 +268,30 @@ async function main() {
     const browser = await launchBrowser();
 
     try {
+      // IMPORTANT: collect every prerendered route's HTML *before* writing
+      // any of them to disk. Vite preview falls back to `dist/index.html`
+      // for unknown routes, so if we wrote `/` first the next route's
+      // SPA fallback would already contain the home page's per-route
+      // schemas (servicesListSchema, homePageSchema, etc.) which would
+      // then leak into every subsequent prerender. Buffering avoids that.
+      const rendered = [];
       for (const route of routes) {
         console.log(`Prerendering ${route}`);
         const html = await prerender(browser, route);
+        rendered.push({route, html});
+      }
+
+      console.log(`Prerendering ${notFoundRoute} -> dist/not_found.html`);
+      const notFoundHtml = await prerender(browser, notFoundRoute);
+
+      for (const {route, html} of rendered) {
         await writeRouteHtml(route, html);
       }
+      // The 404 page is written to dist/not_found.html (not dist/404/index.html)
+      // so wrangler's `not_found_handling = "404-page"` can serve it with an
+      // actual HTTP 404 status.
+      await writeFile(join(distDir, 'not_found.html'), notFoundHtml, 'utf-8');
+      console.log('  wrote dist/not_found.html');
 
       const sitemap = buildSitemap(routes);
       await writeFile(join(distDir, 'sitemap.xml'), sitemap, 'utf-8');

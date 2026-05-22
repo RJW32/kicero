@@ -93,20 +93,24 @@ baked into the static HTML.
 ## Marketing setup checklist (one-off)
 
 1. **Google Search Console** — add `https://kicero.co.uk`, verify, and submit
-   `https://kicero.co.uk/sitemap.xml`.
+   `https://kicero.co.uk/sitemap.xml`. After each deploy that touches JSON-LD,
+   use **URL Inspection** on `/` and `/about` (test live URL) and **Request
+   indexing** if discovery is slow.
 2. **Bing Webmaster Tools** — same flow as above; sitemap autodiscovery picks
    it up from `robots.txt`.
 3. **Google Business Profile** — create a profile (Scotland-based, UK service
    area). Even a UK-wide service business benefits significantly from a local
    listing.
-4. **Social profiles** — once you spin up LinkedIn / X / Instagram, add their
-   URLs to the `sameAs` array in
-   [`src/seo/structuredData.ts`](src/seo/structuredData.ts) so they appear in
-   the Knowledge Panel.
-5. **Open Graph card** — `public/kicero-logo.png` is used as the default OG
-   image. For best click-through, replace it with a 1200x630 PNG built from
-   `public/og-image.svg` (or design a new card in Figma) and keep the same
-   filename.
+4. **Wikidata / other `sameAs` profiles** — bake verification URLs into the
+   Organization schema at build time via `.env`:
+   - `VITE_WIKIDATA_ENTITY_URL` — canonical item URL, e.g.
+     `https://www.wikidata.org/wiki/Q123456789`
+   - `VITE_ORGANIZATION_SAME_AS` — optional comma-separated URLs (LinkedIn
+     company, Companies House, Crunchbase, …)
+   Each profile should also list **kicero.co.uk** as its official website so
+   the signal is bidirectional.
+5. **Open Graph card** — default social image is `public/og-image.svg` (1200×630).
+   For maximum scraper compatibility you can add a matching `og-image.png`.
 
 ## Toggling the development disclaimer
 

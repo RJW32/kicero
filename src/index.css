@@ -2,7 +2,13 @@
 
 /*
  * Gotham (display): self-hosted from src/assets/Gotham — @font-face below.
- * Inter (body): still loaded non-blocking from index.html (Google Fonts).
+ * Inter is retained in the body font stack as a soft preference, but is no
+ * longer fetched from Google Fonts (removed in May 2026 for performance +
+ * privacy — eliminates a render-blocking third-party request). When Inter
+ * is not present locally the browser falls back to system UI fonts
+ * (San Francisco on macOS / iOS, Segoe UI on Windows) which closely match
+ * Inter's metrics. If we ever want exact Inter rendering again, self-host
+ * a subset WOFF2 — do not re-add the Google Fonts <link>.
  */
 
 @font-face {

@@ -19,7 +19,10 @@ CONTACT_FROM_NAME = "Kicero Website Questionnaire"
 [assets]
 directory = "dist"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+# Serves dist/not_found.html with HTTP 404 for unknown URLs. The previous
+# "single-page-application" setting returned the index with HTTP 200, which
+# Google flags as a soft-404 and weakens brand-entity confidence.
+not_found_handling = "404-page"
 html_handling = "auto-trailing-slash"
 
 [[r2_buckets]]

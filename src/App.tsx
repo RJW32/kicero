@@ -12,6 +12,7 @@ import SeoHead from './seo/SeoHead';
 import Analytics from './components/Analytics';
 import CookieConsent from './components/CookieConsent';
 
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
@@ -56,6 +57,7 @@ export default function App() {
             }>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/portfolio" element={<PortfolioPage />} />
               <Route path="/contact" element={<ContactPage />} />
@@ -65,6 +67,7 @@ export default function App() {
               <Route path="/client-upload" element={<ClientUploadPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+              <Route path="/404" element={<NotFoundPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

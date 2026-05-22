@@ -1,10 +1,42 @@
 export const SITE_URL = 'https://kicero.co.uk';
 export const SITE_NAME = 'Kicero';
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/kicero-logo.png`;
-/** Pixel dimensions of `kicero-logo.png` (square brand mark, also used as favicon). */
-export const DEFAULT_OG_IMAGE_WIDTH = '1080';
-export const DEFAULT_OG_IMAGE_HEIGHT = '1080';
+/**
+ * Canonical social card (1200x630). The SVG ships in `public/og-image.svg` —
+ * for best compatibility across every social scraper, generate a PNG export
+ * at the same dimensions (`public/og-image.png`) and swap this constant.
+ * SVG works for Google/Twitter; some Slack/iMessage variants prefer raster.
+ */
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.svg`;
+export const DEFAULT_OG_IMAGE_WIDTH = '1200';
+export const DEFAULT_OG_IMAGE_HEIGHT = '630';
 export const SITE_LOCALE = 'en_GB';
+
+/**
+ * Extra `Organization.sameAs` URLs (Wikidata, LinkedIn company, Companies
+ * House profile, …). Injected via Vite env at **build time** — set these in
+ * `.env` (or your CI/deploy environment) before `npm run build` / `npm run cf:deploy`.
+ *
+ * Canonical Wikidata wiki URL shape: `https://www.wikidata.org/wiki/Q123456789`
+ */
+function splitCommaSeparatedUrls(raw: unknown): string[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const wikidataEntityUrl =
+  typeof import.meta.env.VITE_WIKIDATA_ENTITY_URL === 'string'
+    ? import.meta.env.VITE_WIKIDATA_ENTITY_URL.trim()
+    : '';
+
+export const extraOrganizationSameAs: readonly string[] = [
+  ...new Set([
+    ...(wikidataEntityUrl ? [wikidataEntityUrl] : []),
+    ...splitCommaSeparatedUrls(import.meta.env.VITE_ORGANIZATION_SAME_AS),
+  ]),
+];
 
 export interface PageMeta {
   title: string;
@@ -20,10 +52,18 @@ export const pageMeta: Record<string, PageMeta> = {
     title:
       'Kicero | Affordable Custom Websites for Small Businesses (UK)',
     description:
-      'Kicero builds simple, high-end, low-cost websites for small businesses, startups and individuals across the UK. Designed and built in Scotland. You only pay when your site is live.',
+      'Kicero is a Scottish web design studio building simple, high-end, low-cost custom websites for small businesses, startups and individuals across the UK. Designed and built in Scotland. You only pay when your site is live.',
     path: '/',
     keywords:
-      'web design uk, affordable website, small business website, custom website, scottish web developer, cheap website design, website for small business uk, simple website',
+      'kicero, kicero web design, kicero studio, web design uk, affordable website, small business website, custom website, scottish web developer, cheap website design, website for small business uk, simple website',
+  },
+  about: {
+    title: 'About Kicero | Scottish Web Design Studio for UK Small Businesses',
+    description:
+      'Kicero is a Scottish web design studio that builds affordable, high-end custom websites for small businesses, startups and individuals across the United Kingdom. Designed and built in Scotland.',
+    path: '/about',
+    keywords:
+      'about kicero, what is kicero, who runs kicero, where is kicero based, kicero scotland, scottish web design studio',
   },
   services: {
     title: 'Web Design Pricing from £15/month | Kicero',
@@ -92,6 +132,22 @@ export const pageMeta: Record<string, PageMeta> = {
   },
 };
 
+/**
+ * Stable last-modified dates per route. Update when the page content
+ * meaningfully changes. Sitemap freshness signal — Google uses `lastmod` to
+ * decide when to recrawl, so honest dates beat "everything updated today".
+ */
+export const pageLastModified: Record<string, string> = {
+  '/': '2026-05-22',
+  '/about': '2026-05-22',
+  '/services': '2026-05-20',
+  '/portfolio': '2026-05-20',
+  '/contact': '2026-05-20',
+  '/blog': '2026-05-22',
+  '/privacy': '2026-05-20',
+  '/terms': '2026-05-20',
+};
+
 export const blogArticles: Array<{
   slug: string;
   title: string;
@@ -100,6 +156,12 @@ export const blogArticles: Array<{
   updatedAt: string;
   readingMinutes: number;
   excerpt: string;
+  /**
+   * Optional per-article social card. Path under `/public` or absolute URL.
+   * Falls back to `DEFAULT_OG_IMAGE` when omitted. Per-article images
+   * dramatically improve Discover + social CTR.
+   */
+  ogImage?: string;
 }> = [
   {
     slug: 'how-much-should-a-small-business-website-cost-uk-2026',

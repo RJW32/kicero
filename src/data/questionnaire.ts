@@ -7,6 +7,11 @@ export interface BaseQuestion {
   /** Shown below the label (e.g. upload instructions). */
   description?: string;
   optional?: boolean;
+  /**
+   * Plain text for an expandable “info” control next to the label
+   * (use blank lines between paragraphs).
+   */
+  infoExplainer?: string;
 }
 
 export interface TextQuestion extends BaseQuestion {
@@ -218,7 +223,7 @@ const questionnairePageFollowUps: QuestionnaireQuestion[] = [
       id: 'page_home_backgroundVideo',
       label: 'Do you want a background video playing on the homepage?',
       type: 'radio',
-      options: ['Yes', 'No', 'Not sure'],
+      options: ['Yes', 'No'],
       optional: true,
     },
     {
@@ -435,6 +440,24 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
     type: 'radio',
     options: ['Important', 'Not important'],
     optional: true,
+  },
+  {
+    id: 'alternativePricingInterest',
+    section: 'Final Notes',
+    label: 'Would you like a quote for alternative pricing?',
+    type: 'radio',
+    options: ['Yes', 'No'],
+    optional: true,
+    infoExplainer:
+      `Alternative pricing is another way to pay for your website after we understand what you need:
+
+• You receive a one-off quote for the build — typically from upwards of £250 depending on scope — and that amount is invoiced when your site launches.
+
+• After launch it is £2 per month recurring, plus £1 per month for domain management if we manage your custom domain.
+
+• Up to 30 minutes of small website updates remain included free each month.
+
+If you are not happy with the alternative quote you may still opt for our standard pricing strategy.`,
   },
   {
     id: 'feelWords',

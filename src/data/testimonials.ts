@@ -22,7 +22,7 @@ export const testimonials: ReadonlyArray<Testimonial> = [
   },
   {
     quote:
-      'They built our community project a website over a weekend. No fluff, no upsells, just a fast and clean result that actually gets used.',
+      "Kicero has actually been so helpful in the whole process of making us a website. Super cheap, super simple, really easy. Don't really know what else to say other than they were great. Thanks again!",
     name: 'Project Lead',
     role: 'One Step',
     location: 'Scotland',

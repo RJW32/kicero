@@ -1,4 +1,5 @@
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { Check, Globe, Shield } from 'lucide-react';
 
 export default function Pricing() {
@@ -95,6 +96,32 @@ export default function Pricing() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="border border-brand-gray-200 p-8 md:p-10 mt-12">
+        <h3 className="font-display text-lg font-bold uppercase tracking-tight mb-4">
+          Alternative pricing
+        </h3>
+        <p className="text-brand-gray-600 font-light leading-relaxed text-sm md:text-base mb-6">
+          If you prefer, once we understand what kind of website you are looking for, we can quote a{' '}
+          <strong className="font-medium text-brand-black">one-off price</strong> for the build —
+          typically from upwards of <strong className="font-medium text-brand-black">£250</strong>, depending on scope.
+          That amount is invoiced{' '}
+          <strong className="font-medium text-brand-black">when your site launches</strong>. After launch, pricing is{' '}
+          <strong className="font-medium text-brand-black">£2 per month</strong> recurring, plus{' '}
+          <strong className="font-medium text-brand-black">£1 per month</strong> domain management where we manage your custom domain — the same allowance applies:{' '}
+          <strong className="font-medium text-brand-black">up to 30 minutes</strong> of small updates included free each month.
+        </p>
+        <p className="text-brand-gray-500 text-sm font-light leading-relaxed">
+          Questions about alternative pricing?{' '}
+          <Link
+            to="/contact"
+            className="font-medium text-brand-black underline underline-offset-4 hover:no-underline"
+          >
+            Get in touch
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="border border-brand-gray-200 bg-brand-gray-50/50 p-6 md:p-8 mt-12 max-w-3xl">

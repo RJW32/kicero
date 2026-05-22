@@ -44,6 +44,27 @@ function noopCheckToggle(_id: string, _option: string): void {
   /* renderQuestion expects a checkbox handler even for non-checkbox fields */
 }
 
+function QuestionInfoDropdown({explainer}: {explainer: string}) {
+  return (
+    <details className="group w-full min-w-0 max-w-none text-sm">
+      <summary className="flex w-full cursor-pointer list-none items-center justify-end [&::-webkit-details-marker]:hidden">
+        <span className="inline-flex items-center gap-1.5 rounded border border-brand-gray-300 bg-white px-2.5 py-1 font-semibold uppercase tracking-wide text-brand-gray-800 hover:bg-brand-gray-50">
+          <ChevronDown
+            size={14}
+            strokeWidth={2}
+            aria-hidden
+            className="shrink-0 text-brand-gray-500 transition-transform group-open:rotate-180"
+          />
+          More info
+        </span>
+      </summary>
+      <div className="mt-3 w-full min-w-0 border border-brand-gray-200 bg-brand-gray-50/90 px-3 py-3 text-left shadow-sm">
+        <p className="text-brand-gray-600 leading-relaxed whitespace-pre-line">{explainer}</p>
+      </div>
+    </details>
+  );
+}
+
 const groupedQuestions = questionnaireQuestions.reduce<Record<string, QuestionnaireQuestion[]>>(
   (acc, question) => {
     acc[question.section] = acc[question.section] ?? [];
@@ -500,15 +521,29 @@ export default function Questionnaire() {
                         detailPageLabel !== 'Testimonials' &&
                         detailPageLabel !== 'FAQ' &&
                         questions.map((question) => (
-                          <div key={question.id}>
-                            <label className="block text-sm font-semibold mb-2">
-                              {question.label}
-                              {question.optional !== false && (
-                                <span className="text-brand-gray-500 font-normal ml-2">
-                                  (optional)
-                                </span>
-                              )}
-                            </label>
+                          <div key={question.id} className="min-w-0 w-full">
+                            {question.infoExplainer ? (
+                              <div className="mb-2 w-full min-w-0 space-y-2">
+                                <label className="block text-sm font-semibold">
+                                  {question.label}
+                                  {question.optional !== false && (
+                                    <span className="text-brand-gray-500 font-normal ml-2">
+                                      (optional)
+                                    </span>
+                                  )}
+                                </label>
+                                <QuestionInfoDropdown explainer={question.infoExplainer} />
+                              </div>
+                            ) : (
+                              <label className="mb-2 block text-sm font-semibold">
+                                {question.label}
+                                {question.optional !== false && (
+                                  <span className="text-brand-gray-500 font-normal ml-2">
+                                    (optional)
+                                  </span>
+                                )}
+                              </label>
+                            )}
                             {question.description && (
                               <p className="text-sm text-brand-gray-600 mb-3 leading-relaxed max-w-3xl whitespace-pre-line">
                                 {question.description}

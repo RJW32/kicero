@@ -18,6 +18,13 @@ export function usePageSeo({meta, structuredData = []}: UsePageSeoOptions) {
 
   const headInput: Parameters<typeof useHead>[0] = {
     title: meta.title,
+    link: [
+      // Self-referencing hreflang is best practice even for single-locale
+      // sites: it tells Google unambiguously that this page is en-GB and
+      // suppresses incorrect translation prompts in non-UK search results.
+      {rel: 'alternate', hreflang: 'en-GB', href: url},
+      {rel: 'alternate', hreflang: 'x-default', href: url},
+    ],
     meta: [
       {name: 'description', content: meta.description},
       {

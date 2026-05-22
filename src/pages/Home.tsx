@@ -10,7 +10,7 @@ import Process from '../components/Process';
 import Testimonials from '../components/Testimonials';
 import {usePageSeo} from '../seo/usePageSeo';
 import {pageMeta} from '../seo/seoConfig';
-import {servicesListSchema} from '../seo/structuredData';
+import {homePageSchema, servicesListSchema} from '../seo/structuredData';
 import {usePrefersReducedMotion} from '../hooks/useMediaQuery';
 
 const showDevDisclaimer = import.meta.env.VITE_SHOW_DEV_DISCLAIMER === 'true';
@@ -21,7 +21,7 @@ const FADE_TRANSITION = {duration: 0.8, ease: [0.16, 1, 0.3, 1]} as const;
 export default function Home() {
   usePageSeo({
     meta: pageMeta.home,
-    structuredData: [servicesListSchema],
+    structuredData: [homePageSchema, servicesListSchema],
   });
   const reducedMotion = usePrefersReducedMotion();
   const parallaxOn = !reducedMotion;
@@ -176,7 +176,10 @@ export default function Home() {
           <div className="relative z-10 max-w-2xl">
             <h2 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold uppercase tracking-tight mb-10 leading-[0.95] break-words">
               READY TO <br />
-              EXPAND AND PROFESSIONALISE
+              EXPAND AND{' '}
+              <span className="inline-block whitespace-nowrap">
+                PROFESSIONALISE
+              </span>
               <br />
               YOUR BUSINESS?
             </h2>

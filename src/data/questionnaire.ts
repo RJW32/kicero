@@ -453,9 +453,7 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
 
 • You receive a one-off quote for the build — typically from upwards of £250 depending on scope — and that amount is invoiced when your site launches.
 
-• After launch it is £2 per month recurring, plus £1 per month for domain management if we manage your custom domain.
-
-• Up to 30 minutes of small website updates remain included free each month.
+• After launch it is £24 per year recurring (equivalent to £2 per month), plus £12 per year for domain management if we manage your custom domain — £36 per year in total, or £3 per month. Website updates are quoted separately.
 
 If you are not happy with the alternative quote you may still opt for our standard pricing strategy.`,
   },

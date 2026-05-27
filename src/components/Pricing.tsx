@@ -103,14 +103,15 @@ export default function Pricing() {
           Alternative pricing
         </h3>
         <p className="text-brand-gray-600 font-light leading-relaxed text-sm md:text-base mb-6">
-          If you prefer, once we understand what kind of website you are looking for, we can quote a{' '}
-          <strong className="font-medium text-brand-black">one-off price</strong> for the build —
-          typically from upwards of <strong className="font-medium text-brand-black">£250</strong>, depending on scope.
+          If you prefer, once we understand what kind of website you are looking for, we{' '}
+          <strong className="font-medium text-brand-black">quote for the work</strong> with a one-off price for the build.
           That amount is invoiced{' '}
           <strong className="font-medium text-brand-black">when your site launches</strong>. After launch, pricing is{' '}
-          <strong className="font-medium text-brand-black">£2 per month</strong> recurring, plus{' '}
-          <strong className="font-medium text-brand-black">£1 per month</strong> domain management where we manage your custom domain — the same allowance applies:{' '}
-          <strong className="font-medium text-brand-black">up to 30 minutes</strong> of small updates included free each month.
+          <strong className="font-medium text-brand-black">£24 per year</strong> recurring — equivalent to{' '}
+          <strong className="font-medium text-brand-black">£2 per month</strong> — plus{' '}
+          <strong className="font-medium text-brand-black">£12 per year</strong> for domain management where we manage your custom domain, for{' '}
+          <strong className="font-medium text-brand-black">£36 per year</strong> in total (
+          <strong className="font-medium text-brand-black">£3 per month</strong>). Website updates are quoted separately.
         </p>
         <p className="text-brand-gray-500 text-sm font-light leading-relaxed">
           Questions about alternative pricing?{' '}

@@ -33,7 +33,7 @@ const SECTIONS = [
         </p>
         <p>
           The studio was founded in 2026 with one goal: give UK small
-          businesses, start-ups and individuals impressive websites they are
+          businesses, start-ups and individuals impressive websites that they are
           happy with, without having to suffer such a large price tag.
         </p>
         <p>

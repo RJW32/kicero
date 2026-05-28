@@ -3,6 +3,8 @@ import express from 'express';
 import multer from 'multer';
 import fs from 'node:fs/promises';
 import {
+  CLIENT_UPLOAD_BRANDING_LABEL,
+  isAllowedClientUploadPageLabel,
   orderedSelectedPages,
   pageLabelFromDetailSection,
   questionnaireQuestions,
@@ -13,6 +15,7 @@ import {
   verifyClientUploadToken,
 } from './src/lib/clientUploadToken';
 import {
+  assertAllowedBrandingPortalUpload,
   assertAllowedClientPortalUpload,
   assertAllowedUpload,
   buildClientMediaObjectKey,
@@ -279,12 +282,15 @@ app.post('/api/client-upload/presign', async (req, res) => {
     return res.status(500).json({error: 'Could not validate upload token.'});
   }
 
-  if (!payload || !payload.pages.includes(pageLabel)) {
+  if (!payload || !isAllowedClientUploadPageLabel(pageLabel, payload.pages)) {
     return res.status(403).json({error: 'Invalid or expired upload link.'});
   }
 
   const pageSlug = pageSlugFromLabel(pageLabel);
-  const v = assertAllowedClientPortalUpload({filename, contentType, size});
+  const v =
+    pageLabel === CLIENT_UPLOAD_BRANDING_LABEL
+      ? assertAllowedBrandingPortalUpload({filename, contentType, size})
+      : assertAllowedClientPortalUpload({filename, contentType, size});
   if (v.error) return res.status(400).json({error: v.error});
 
   const signingEnv = r2EnvFromProcess();

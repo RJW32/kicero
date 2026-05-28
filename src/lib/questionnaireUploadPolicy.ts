@@ -60,6 +60,28 @@ export function buildClientMediaObjectKey(params: {
 /** Combined size cap for all media files under one page on the client upload portal (presign path). */
 export const CLIENT_PORTAL_MAX_BYTES_TOTAL_PER_PAGE = 500 * 1024 * 1024; // 500 MB total per page
 
+/** Business branding uploads — logos and brand files (images, videos, PDF). */
+export function assertAllowedBrandingPortalUpload(input: UploadValidationInput): {error?: string} {
+  const v = assertAllowedUpload({
+    ...input,
+    maxBytes: input.maxBytes ?? DEFAULT_MAX_BYTES,
+  });
+  if (v.error) return v;
+  const name = input.filename?.trim() ?? '';
+  const ct = (input.contentType ?? '').toLowerCase();
+  const brandingOk =
+    ct.startsWith('image/') ||
+    ct.startsWith('video/') ||
+    ct === 'application/pdf' ||
+    VIDEO_EXT.test(name) ||
+    IMAGE_EXT.test(name) ||
+    /\.pdf$/i.test(name);
+  if (!brandingOk) {
+    return {error: 'Branding uploads must be images, videos, or PDF files.'};
+  }
+  return {};
+}
+
 /** Client upload page — images and videos only (no arbitrary documents). */
 export function assertAllowedClientPortalUpload(input: UploadValidationInput): {error?: string} {
   const v = assertAllowedUpload({

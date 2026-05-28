@@ -5,7 +5,13 @@ import {ChevronDown} from 'lucide-react';
 import {
   ABOUT_FOCUS_FIELD_IDS,
   ABOUT_FOCUS_OPTIONS,
+  computeExtraPageFees,
+  EXTRA_PAGE_SETUP_FEE_GBP,
   FAQ_MAX_SLOTS,
+  PAGE_ANYTHING_ELSE_FIELD_IDS,
+  PAGE_ANYTHING_ELSE_FIELD_ID_SET,
+  PAGE_OPTIONS_ORDER,
+  PAGES_INCLUDED_FREE,
   PORTFOLIO_GALLERY_UPLOAD_NOTE,
   QUESTIONNAIRE_EXPLAINER_DISCLAIMER,
   QUESTIONNAIRE_EXPLAINER_PARAGRAPHS,
@@ -15,6 +21,7 @@ import {
   pageDetailSection,
   pageLabelFromDetailSection,
   questionnaireQuestions,
+  type PageOption,
   type QuestionnaireQuestion,
 } from '../data/questionnaire';
 import {usePersistentForm} from '../hooks/usePersistentForm';
@@ -84,6 +91,96 @@ function isLikelyFetchNetworkError(err: unknown): boolean {
     m.includes('failed to fetch') ||
     m.includes('networkerror') ||
     m.includes('network request failed')
+  );
+}
+
+function PagesWantedFields({
+  answers,
+  onTogglePage,
+}: {
+  answers: FormModel['answers'];
+  onTogglePage: (option: string) => void;
+}) {
+  const question = questionnaireQuestions.find((q) => q.id === 'pagesWanted');
+  if (!question || question.type !== 'checkbox') return null;
+
+  const {selectionOrder, extraPages, extraFeesTotal} = computeExtraPageFees(answers.pagesWanted);
+  const selectedSet = new Set(selectionOrder);
+  const extraPageSet = new Set(extraPages);
+
+  return (
+    <div className="space-y-4">
+      <label className="block text-sm font-semibold">
+        {question.label}
+        {question.optional !== false && (
+          <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+        )}
+      </label>
+      {question.description && (
+        <p className="text-sm text-brand-gray-600 leading-relaxed max-w-3xl whitespace-pre-line">
+          {question.description}
+        </p>
+      )}
+      <p className="text-sm text-brand-gray-600">
+        The first {PAGES_INCLUDED_FREE} pages you tick are included. From the fifth page onward, each one you tick adds{' '}
+        <strong className="font-medium text-brand-black">£{EXTRA_PAGE_SETUP_FEE_GBP}</strong> to your one-off setup
+        fee. If you untick a free page, the most recently added extra fee is removed first.
+      </p>
+      <div className="space-y-2">
+        {PAGE_OPTIONS_ORDER.map((option) => {
+          const isSelected = selectedSet.has(option);
+          const isExtra = isSelected && extraPageSet.has(option);
+          return (
+            <label key={option} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => onTogglePage(option)}
+              />
+              <span className="flex flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span>{option}</span>
+                {isExtra ? (
+                  <span className="text-xs font-semibold uppercase tracking-wide text-brand-gray-600">
+                    + £{EXTRA_PAGE_SETUP_FEE_GBP}
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {extraFeesTotal > 0 ? (
+        <p className="border-t border-brand-gray-200 pt-4 text-sm font-semibold text-brand-black">
+          Extra fees: £{extraFeesTotal}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PageAnythingElseField({
+  pageLabel,
+  answers,
+  setAnswer,
+}: {
+  pageLabel: PageOption;
+  answers: FormModel['answers'];
+  setAnswer: (id: string, next: AnswerValue) => void;
+}) {
+  const fieldId = PAGE_ANYTHING_ELSE_FIELD_IDS[pageLabel];
+  const question = questionnaireQuestions.find((q) => q.id === fieldId);
+  if (!question) return null;
+
+  return (
+    <div className="border-t border-brand-gray-200 pt-6">
+      <label className="mb-2 block text-sm font-semibold">
+        {question.label}
+        {question.optional !== false && (
+          <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+        )}
+      </label>
+      {renderQuestion(question, answers[fieldId], setAnswer, noopCheckToggle)}
+    </div>
   );
 }
 
@@ -335,6 +432,16 @@ export default function Questionnaire() {
     setAnswer(id, next);
   };
 
+  const handlePagesWantedToggle = (option: string) => {
+    setValue((prev) => {
+      const current = Array.isArray(prev.answers.pagesWanted) ? prev.answers.pagesWanted : [];
+      const next = current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option];
+      return {...prev, answers: {...prev.answers, pagesWanted: next}};
+    });
+  };
+
   const submitQuestionnaire = async () => {
     if (!value.clientName.trim()) {
       setError('Please add your name so we can reach you.');
@@ -517,10 +624,16 @@ export default function Questionnaire() {
                       {detailPageLabel === 'FAQ' && (
                         <FaqPageDetailFields answers={value.answers} setAnswer={setAnswer} />
                       )}
+                      {sectionKey === 'Pages' && (
+                        <PagesWantedFields answers={value.answers} onTogglePage={handlePagesWantedToggle} />
+                      )}
                       {detailPageLabel !== 'About' &&
                         detailPageLabel !== 'Testimonials' &&
                         detailPageLabel !== 'FAQ' &&
-                        questions.map((question) => (
+                        sectionKey !== 'Pages' &&
+                        questions
+                          .filter((question) => !PAGE_ANYTHING_ELSE_FIELD_ID_SET.has(question.id))
+                          .map((question) => (
                           <div key={question.id} className="min-w-0 w-full">
                             {question.infoExplainer ? (
                               <div className="mb-2 w-full min-w-0 space-y-2">
@@ -563,6 +676,14 @@ export default function Questionnaire() {
                             )}
                           </div>
                         ))}
+                      {detailPageLabel &&
+                        PAGE_OPTIONS_ORDER.includes(detailPageLabel as PageOption) && (
+                          <PageAnythingElseField
+                            pageLabel={detailPageLabel as PageOption}
+                            answers={value.answers}
+                            setAnswer={setAnswer}
+                          />
+                        )}
                     </div>
                   );
                 })}

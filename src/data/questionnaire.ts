@@ -72,6 +72,73 @@ export function orderedSelectedPages(pagesRaw: string | string[] | undefined): s
 /** Client-facing stub upload UI (linked from questionnaire notification email). */
 export const CLIENT_UPLOAD_PATH = '/client-upload' as const;
 
+/** Always available on the client upload portal (not tied to questionnaire page picks). */
+export const CLIENT_UPLOAD_BRANDING_LABEL = 'Business branding' as const;
+
+export function isAllowedClientUploadPageLabel(
+  pageLabel: string,
+  tokenPages: readonly string[],
+): boolean {
+  if (pageLabel === CLIENT_UPLOAD_BRANDING_LABEL) return true;
+  return tokenPages.includes(pageLabel);
+}
+
+/** Brochure sites include up to this many questionnaire pages at no extra setup cost. */
+export const PAGES_INCLUDED_FREE = 4;
+
+/** Added to the one-off setup fee for each page beyond {@link PAGES_INCLUDED_FREE}. */
+export const EXTRA_PAGE_SETUP_FEE_GBP = 14;
+
+/** Extra setup fees use {@link pagesWanted} array order (order the client ticked boxes). */
+export function computeExtraPageFees(pagesWanted: string[] | string | undefined): {
+  selectionOrder: string[];
+  includedPages: string[];
+  extraPages: string[];
+  extraFeesTotal: number;
+} {
+  const allowed = new Set<string>(PAGE_OPTIONS_ORDER);
+  const selectionOrder: string[] = [];
+  const raw = Array.isArray(pagesWanted) ? pagesWanted : [];
+  for (const page of raw) {
+    if (typeof page !== 'string' || !allowed.has(page) || selectionOrder.includes(page)) continue;
+    selectionOrder.push(page);
+  }
+  const includedPages = selectionOrder.slice(0, PAGES_INCLUDED_FREE);
+  const extraPages = selectionOrder.slice(PAGES_INCLUDED_FREE);
+  return {
+    selectionOrder,
+    includedPages,
+    extraPages,
+    extraFeesTotal: extraPages.length * EXTRA_PAGE_SETUP_FEE_GBP,
+  };
+}
+
+/** Stable field id for the “Anything else?” textarea on each page follow-up step. */
+export const PAGE_ANYTHING_ELSE_FIELD_IDS: Record<PageOption, string> = {
+  Home: 'page_home_anythingElse',
+  About: 'page_about_anythingElse',
+  Services: 'page_services_anythingElse',
+  Pricing: 'page_pricing_anythingElse',
+  'Portfolio / Gallery': 'page_portfolio_anythingElse',
+  Testimonials: 'page_testimonials_anythingElse',
+  FAQ: 'page_faq_anythingElse',
+  Contact: 'page_contact_anythingElse',
+};
+
+export const PAGE_ANYTHING_ELSE_FIELD_ID_SET: ReadonlySet<string> = new Set(
+  Object.values(PAGE_ANYTHING_ELSE_FIELD_IDS),
+);
+
+function buildPageAnythingElseQuestion(pageName: PageOption): QuestionnaireQuestion {
+  return {
+    id: PAGE_ANYTHING_ELSE_FIELD_IDS[pageName],
+    section: pageDetailSection(pageName),
+    label: 'Anything else?',
+    type: 'textarea',
+    optional: true,
+  };
+}
+
 /** Origin for questionnaire notification links: PUBLIC_SITE_URL when set (recommended for separate API/UI hosts), otherwise request URL, then production default. */
 export function questionnaireSiteOrigin(requestUrl: string, publicSiteUrl?: string): string {
   const trimmedEnv = typeof publicSiteUrl === 'string' ? publicSiteUrl.trim().replace(/\/$/, '') : '';
@@ -129,7 +196,10 @@ function pageQuestions(
   items: QuestionWithoutSection[],
 ): QuestionnaireQuestion[] {
   const section = pageDetailSection(pageName);
-  return items.map((q) => ({...q, section} as QuestionnaireQuestion));
+  return [
+    ...items.map((q) => ({...q, section} as QuestionnaireQuestion)),
+    buildPageAnythingElseQuestion(pageName),
+  ];
 }
 
 export const ABOUT_FOCUS_OPTIONS = ['Team', 'Mission', 'Story', 'Credentials'] as const;
@@ -181,6 +251,7 @@ const testimonialsPageQuestions: QuestionnaireQuestion[] = (() => {
       placeholder: `0–${TESTIMONIALS_MAX_SLOTS}`,
     },
     ...slots,
+    buildPageAnythingElseQuestion('Testimonials'),
   ];
 })();
 
@@ -214,6 +285,7 @@ const faqPageQuestions: QuestionnaireQuestion[] = (() => {
       placeholder: `1–${FAQ_MAX_SLOTS}`,
     },
     ...pairs,
+    buildPageAnythingElseQuestion('FAQ'),
   ];
 })();
 
@@ -422,20 +494,22 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
     id: 'pagesWanted',
     section: 'Pages',
     label: 'Pages you would like',
+    description:
+      'Up to 4 pages are included at no extra setup cost. Each additional page you select adds £14 to your one-off setup fee.',
     type: 'checkbox',
     options: [...PAGE_OPTIONS_ORDER],
     optional: true,
   },
   {
     id: 'mustAndAvoid',
-    section: 'User Experience Preferences',
+    section: 'Final Notes',
     label: 'Anything you definitely want or do not want?',
     type: 'textarea',
     optional: true,
   },
   {
     id: 'mobilePriority',
-    section: 'User Experience Preferences',
+    section: 'Final Notes',
     label: 'Is mobile-friendly design important?',
     type: 'radio',
     options: ['Important', 'Not important'],
@@ -453,7 +527,7 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
 
 • You receive a one-off quote for the build — typically from upwards of £250 depending on scope — and that amount is invoiced when your site launches.
 
-• After launch it is £24 per year recurring (equivalent to £2 per month), plus £12 per year for domain management if we manage your custom domain — £36 per year in total, or £3 per month. Website updates are quoted separately.
+• After launch it is £32 per year recurring (equivalent to £2.50 per month), including domain management if we manage your custom domain. Website updates are quoted separately.
 
 If you are not happy with the alternative quote you may still opt for our standard pricing strategy.`,
   },
@@ -494,7 +568,6 @@ export const questionnaireStepSections: string[][] = [
   ['Brand & Style'],
   ['Colour Preferences', 'Fonts'],
   ['Pages'],
-  ['User Experience Preferences'],
   ['Final Notes'],
   ['Images & Visuals'],
 ];

@@ -19,28 +19,34 @@ export default function Pricing() {
       </p>
 
       <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
-        {/* Hero numbers */}
-        <div className="lg:col-span-5 border border-brand-gray-200 bg-brand-gray-50/80 p-8 md:p-10 flex flex-col justify-between">
+        {/* Hero numbers — custom domain (standard) */}
+        <div className="lg:col-span-5 border border-brand-black bg-brand-gray-50/80 p-8 md:p-10 flex flex-col justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand-gray-500 mb-6">
-              Launch &amp; hosting
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand-gray-500 mb-2">
+              Standard — custom domain
+            </p>
+            <p className="text-xs text-brand-gray-500 font-light mb-6">
+              What most customers choose. Your own domain name, with basic SEO included.
             </p>
             <div className="space-y-8">
               <div>
                 <p className="text-brand-gray-600 text-sm font-light mb-1">First payment (when you go live)</p>
-                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£40</p>
+                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£41</p>
                 <p className="text-brand-gray-500 text-sm mt-2 font-light">
                   Your first month at{' '}
-                  <strong className="font-medium text-brand-black">£15</strong> plus a one-off{' '}
+                  <strong className="font-medium text-brand-black">£16</strong> plus a one-off{' '}
                   <strong className="font-medium text-brand-black">£25</strong> setup fee — nothing more until the next monthly invoice.
+                </p>
+                <p className="text-brand-gray-500 text-sm mt-2 font-light">
+                  If we register a domain for you, the registration cost is passed through at setup on top of this.
                 </p>
               </div>
               <div className="h-px bg-brand-gray-200" />
               <div>
                 <p className="text-brand-gray-600 text-sm font-light mb-1">Then, every month</p>
-                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£15</p>
+                <p className="font-display text-5xl md:text-6xl font-bold tracking-tighter">£16</p>
                 <p className="text-brand-gray-500 text-sm mt-2 font-light">
-                  Recurring from one month after your first payment.
+                  Recurring from one month after your first payment. Includes domain management.
                 </p>
               </div>
             </div>
@@ -55,7 +61,7 @@ export default function Pricing() {
           <div className="border border-brand-gray-200 p-6 md:p-8">
             <h3 className="font-display text-lg font-bold uppercase tracking-tight mb-4 flex items-center gap-2">
               <Check className="text-brand-gray-400 shrink-0" size={20} strokeWidth={2} />
-              Included in £15 / month
+              Included in £16 / month
             </h3>
             <ul className="space-y-3 text-brand-gray-600 font-light text-sm md:text-base leading-relaxed">
               <li>Hosting so your site stays online.</li>
@@ -64,6 +70,12 @@ export default function Pricing() {
               </li>
               <li>
                 Small updates included: up to <strong className="font-medium text-brand-black">30 minutes</strong> of work per month at no extra charge (fair use for tweaks and minor edits).
+              </li>
+              <li>
+                Custom domain management — we connect and maintain your own domain name as part of the monthly fee.
+              </li>
+              <li>
+                Basic SEO setup so Google can find and understand your site (page titles, descriptions, headings, and clean structure).
               </li>
             </ul>
             <p className="mt-6 text-sm text-brand-gray-500 font-light border-l-2 border-brand-gray-300 pl-4">
@@ -76,26 +88,56 @@ export default function Pricing() {
               <Globe className="text-brand-gray-400 mb-3" size={22} strokeWidth={1.5} />
               <h3 className="font-bold text-sm uppercase tracking-widest mb-2">Domains</h3>
               <p className="text-brand-gray-600 text-sm font-light leading-relaxed">
-                Use our subdomain <strong className="font-medium text-brand-black">kicero.workers.dev</strong> at no cost.
+                Most customers use their own domain — that is what the{' '}
+                <strong className="font-medium text-brand-black">£16 / month</strong> plan is built around.
               </p>
               <p className="text-brand-gray-600 text-sm font-light leading-relaxed mt-3">
-                Prefer your own domain? If you do not already own one, we can purchase it after your first payment and pass the registration cost through. Domain management adds{' '}
-                <strong className="font-medium text-brand-black">£1 / month</strong>.
+                If you do not already own a domain, we can register one for you at setup and pass the registration cost through to you. Domain management is included in the monthly fee.
               </p>
             </div>
             <div className="border border-brand-gray-200 p-6">
               <Shield className="text-brand-gray-400 mb-3" size={22} strokeWidth={1.5} />
               <h3 className="font-bold text-sm uppercase tracking-widest mb-2">Summary</h3>
               <p className="text-brand-gray-600 text-sm font-light leading-relaxed">
-                <strong className="font-medium text-brand-black">£40</strong> at launch (
-                <strong className="font-medium text-brand-black">£15</strong> first month +{' '}
+                <strong className="font-medium text-brand-black">£41</strong> at launch (
+                <strong className="font-medium text-brand-black">£16</strong> first month +{' '}
                 <strong className="font-medium text-brand-black">£25</strong> setup), then{' '}
-                <strong className="font-medium text-brand-black">£15</strong> each month starting one month later. Optional custom domain: cost of registration plus{' '}
-                <strong className="font-medium text-brand-black">£1 / month</strong> for management.
+                <strong className="font-medium text-brand-black">£16</strong> each month starting one month later — plus any domain registration cost at setup if we register one for you.
               </p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Subdomain alternative */}
+      <div className="border border-brand-gray-200 p-8 md:p-10 mt-12">
+        <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-brand-gray-500 mb-2">
+          Alternative — no custom domain
+        </p>
+        <h3 className="font-display text-lg font-bold uppercase tracking-tight mb-4">
+          Subdomain only · £14 / month
+        </h3>
+        <p className="text-brand-gray-600 font-light leading-relaxed text-sm md:text-base mb-6 max-w-3xl">
+          If you prefer not to use a custom domain, your site can live on a{' '}
+          <strong className="font-medium text-brand-black">kicero.workers.dev</strong> subdomain instead.
+          The monthly fee drops to <strong className="font-medium text-brand-black">£14</strong>, with a{' '}
+          <strong className="font-medium text-brand-black">£39</strong> launch payment (
+          <strong className="font-medium text-brand-black">£14</strong> first month +{' '}
+          <strong className="font-medium text-brand-black">£25</strong> setup).
+        </p>
+        <p className="text-brand-gray-600 font-light leading-relaxed text-sm md:text-base mb-6 max-w-3xl">
+          This option does <strong className="font-medium text-brand-black">not</strong> include SEO work — search engines treat subdomain sites differently, and meaningful SEO requires a custom domain. Hosting, the contact form, and small updates are still included.
+        </p>
+        <p className="text-brand-gray-500 text-sm font-light leading-relaxed">
+          Want the standard plan with your own domain?{' '}
+          <Link
+            to="/contact"
+            className="font-medium text-brand-black underline underline-offset-4 hover:no-underline"
+          >
+            Get in touch
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="border border-brand-gray-200 p-8 md:p-10 mt-12">
@@ -107,11 +149,8 @@ export default function Pricing() {
           <strong className="font-medium text-brand-black">quote for the work</strong> with a one-off price for the build.
           That amount is invoiced{' '}
           <strong className="font-medium text-brand-black">when your site launches</strong>. After launch, pricing is{' '}
-          <strong className="font-medium text-brand-black">£24 per year</strong> recurring — equivalent to{' '}
-          <strong className="font-medium text-brand-black">£2 per month</strong> — plus{' '}
-          <strong className="font-medium text-brand-black">£12 per year</strong> for domain management where we manage your custom domain, for{' '}
-          <strong className="font-medium text-brand-black">£36 per year</strong> in total (
-          <strong className="font-medium text-brand-black">£3 per month</strong>). Website updates are quoted separately.
+          <strong className="font-medium text-brand-black">£32 per year</strong> recurring — equivalent to{' '}
+          <strong className="font-medium text-brand-black">£2.50 per month</strong> — including domain management where we manage your custom domain. Website updates are quoted separately.
         </p>
         <p className="text-brand-gray-500 text-sm font-light leading-relaxed">
           Questions about alternative pricing?{' '}

@@ -1,4 +1,6 @@
 import {
+  CLIENT_UPLOAD_BRANDING_LABEL,
+  isAllowedClientUploadPageLabel,
   orderedSelectedPages,
   pageLabelFromDetailSection,
   questionnaireQuestions,
@@ -9,6 +11,7 @@ import {
   verifyClientUploadToken,
 } from './src/lib/clientUploadToken';
 import {
+  assertAllowedBrandingPortalUpload,
   assertAllowedClientPortalUpload,
   assertAllowedUpload,
   buildClientMediaObjectKey,
@@ -399,16 +402,23 @@ async function handleClientUploadPresign(request: Request, env: Env): Promise<Re
   }
 
   const payload = await verifyClientUploadToken(secret, token);
-  if (!payload || !payload.pages.includes(pageLabel)) {
+  if (!payload || !isAllowedClientUploadPageLabel(pageLabel, payload.pages)) {
     return jsonResponse({error: 'Invalid or expired upload link.'}, 403);
   }
 
   const pageSlug = pageSlugFromLabel(pageLabel);
-  const v = assertAllowedClientPortalUpload({
-    filename,
-    contentType,
-    size,
-  });
+  const v =
+    pageLabel === CLIENT_UPLOAD_BRANDING_LABEL
+      ? assertAllowedBrandingPortalUpload({
+          filename,
+          contentType,
+          size,
+        })
+      : assertAllowedClientPortalUpload({
+          filename,
+          contentType,
+          size,
+        });
   if (v.error) return jsonResponse({error: v.error}, 400);
 
   const signingEnv: Partial<R2SigningEnv> = {

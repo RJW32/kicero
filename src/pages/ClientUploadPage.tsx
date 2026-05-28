@@ -2,6 +2,7 @@ import {useCallback, useEffect, useId, useMemo, useRef, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {ChevronDown} from 'lucide-react';
 import {
+  CLIENT_UPLOAD_BRANDING_LABEL,
   orderedSelectedPages,
   parseClientUploadPagesFromSearch,
 } from '../data/questionnaire';
@@ -110,6 +111,7 @@ interface PageUploadSectionProps {
   uploadsAllowed: boolean;
   simulateUploadOnly?: boolean;
   disableFilePick?: boolean;
+  variant?: 'pageMedia' | 'branding';
   onStatsChange?: (pageLabel: string, stats: SectionStats) => void;
   onRegisterUploadAll?: (pageLabel: string, fn: (() => void) | null) => void;
 }
@@ -120,6 +122,7 @@ function PageUploadSection({
   uploadsAllowed,
   simulateUploadOnly,
   disableFilePick,
+  variant = 'pageMedia',
   onStatsChange,
   onRegisterUploadAll,
 }: PageUploadSectionProps) {
@@ -131,6 +134,9 @@ function PageUploadSection({
   const dragCounter = useRef(0);
   const filesRef = useRef<TrackedFile[]>([]);
   filesRef.current = files;
+
+  const isBranding = variant === 'branding';
+  const fileAccept = isBranding ? 'image/*,video/*,.pdf,application/pdf' : 'image/*,video/*';
 
   const canPickFiles = (uploadsAllowed || Boolean(simulateUploadOnly)) && !disableFilePick;
 
@@ -330,7 +336,9 @@ function PageUploadSection({
 
   const statusSummary =
     files.length === 0
-      ? `Images and videos · up to ${MAX_MB_TOTAL_PER_PAGE} MB total for this page`
+      ? isBranding
+        ? `Brand files · up to ${MAX_MB_TOTAL_PER_PAGE} MB total`
+        : `Images and videos · up to ${MAX_MB_TOTAL_PER_PAGE} MB total for this page`
       : [
           `${formatBytes(pageTotalBytes)} / ${MAX_MB_TOTAL_PER_PAGE} MB for this page`,
           queuedCount ? `${queuedCount} ready to upload` : null,
@@ -348,7 +356,7 @@ function PageUploadSection({
       <header className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-gray-500">
-            For this page
+            {isBranding ? 'Always available' : 'For this page'}
           </p>
           <h2
             id={`${inputId}-heading`}
@@ -360,8 +368,9 @@ function PageUploadSection({
       </header>
 
       <p className="mb-3 text-sm leading-relaxed text-brand-gray-600">
-        Add photos or videos for this page. When everything is ready, use the upload button at the bottom of the page to
-        send all sections together.
+        {isBranding
+          ? 'Add your logo, brand guidelines, colour references, or any other branding files. This section is always available alongside your page uploads.'
+          : 'Add photos or videos for this page. When everything is ready, use the upload button at the bottom of the page to send all sections together.'}
       </p>
 
       <input
@@ -369,7 +378,7 @@ function PageUploadSection({
         type="file"
         className="sr-only"
         multiple
-        accept="image/*,video/*"
+        accept={fileAccept}
         onChange={onInputChange}
         disabled={!canPickFiles}
       />
@@ -402,7 +411,7 @@ function PageUploadSection({
         <span className="text-sm font-semibold text-brand-black">
           {canPickFiles ? (
             <>
-              Drop photos or videos here{' '}
+              Drop {isBranding ? 'brand files' : 'photos or videos'} here{' '}
               <span className="font-normal text-brand-gray-600">or </span>
               <span className="underline decoration-brand-gray-400 underline-offset-4">browse files</span>
             </>
@@ -413,7 +422,8 @@ function PageUploadSection({
           )}
         </span>
         <span className="text-xs text-brand-gray-600">
-          Multiple files allowed.{' '}
+          Multiple files allowed
+          {isBranding ? ' (images, videos, or PDF).' : '.'}{' '}
           {simulateUploadOnly && !uploadsAllowed ? 'Dev preview only (simulated upload).' : 'Delivered over an encrypted connection.'}
         </span>
       </label>
@@ -699,13 +709,14 @@ export default function ClientUploadPage() {
             Send us your images &amp; videos
           </h1>
           <p className="max-w-3xl text-sm leading-relaxed text-brand-gray-600 md:text-base">
-            These uploads are grouped by the pages you chose in your questionnaire. Add files in each section, then
-            scroll down to send everything in one go. After a successful upload, this link cannot be used again — contact
-            us if you need to send more.
+            These uploads are grouped by the pages you chose in your questionnaire, plus a section for your business
+            branding. Add files in each section, then scroll down to send everything in one go. After a successful
+            upload, this link cannot be used again — contact us if you need to send more.
           </p>
           {canUseUploader && hasPages && !linkUsed ? (
             <ol className="max-w-3xl list-decimal space-y-2 pl-5 text-sm text-brand-gray-700 marker:font-semibold marker:text-brand-black">
-              <li>Open each section below that matches a page on your site.</li>
+              <li>Upload your business branding (logo, guidelines, and similar files).</li>
+              <li>Open each page section below that matches a page on your site.</li>
               <li>Drop files in or browse.</li>
               <li>
                 When you&apos;re ready, use the <strong className="text-brand-black">Upload</strong> button at the bottom
@@ -773,6 +784,18 @@ export default function ClientUploadPage() {
 
         {hasPages && !linkUsed ? (
           <ul className="flex flex-col gap-8">
+            <li>
+              <PageUploadSection
+                pageLabel={CLIENT_UPLOAD_BRANDING_LABEL}
+                uploadToken={rawToken}
+                uploadsAllowed={uploadsAllowed}
+                simulateUploadOnly={simulateUploadOnly}
+                disableFilePick={disableFilePick}
+                variant="branding"
+                onStatsChange={handleSectionStats}
+                onRegisterUploadAll={registerSectionUploadAll}
+              />
+            </li>
             {pages.map((page) => (
               <li key={page}>
                 <PageUploadSection

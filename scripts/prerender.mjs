@@ -40,7 +40,8 @@ const blogSlugs = [
   'custom-website-vs-wix-vs-squarespace',
 ];
 
-const routes = [
+/** Indexed marketing routes — included in dist/sitemap.xml */
+const publicRoutes = [
   '/',
   '/about',
   '/services',
@@ -51,6 +52,11 @@ const routes = [
   '/privacy',
   '/terms',
 ];
+
+/** Also pre-rendered to static HTML (noindex / not in sitemap) */
+const privateRoutes = ['/questionnaire', '/client-upload'];
+
+const prerenderRoutes = [...publicRoutes, ...privateRoutes];
 
 // Pre-render the 404 page too, but write it to `dist/not_found.html` instead
 // of `dist/404/index.html` so Cloudflare's `not_found_handling = "404-page"`
@@ -223,6 +229,8 @@ const ROUTE_LASTMOD = {
   '/blog': '2026-05-22',
   '/privacy': '2026-05-20',
   '/terms': '2026-05-20',
+  '/questionnaire': '2026-05-28',
+  '/client-upload': '2026-05-28',
 };
 
 function routeLastMod(route) {
@@ -275,7 +283,7 @@ async function main() {
       // schemas (servicesListSchema, homePageSchema, etc.) which would
       // then leak into every subsequent prerender. Buffering avoids that.
       const rendered = [];
-      for (const route of routes) {
+      for (const route of prerenderRoutes) {
         console.log(`Prerendering ${route}`);
         const html = await prerender(browser, route);
         rendered.push({route, html});
@@ -293,7 +301,7 @@ async function main() {
       await writeFile(join(distDir, 'not_found.html'), notFoundHtml, 'utf-8');
       console.log('  wrote dist/not_found.html');
 
-      const sitemap = buildSitemap(routes);
+      const sitemap = buildSitemap(publicRoutes);
       await writeFile(join(distDir, 'sitemap.xml'), sitemap, 'utf-8');
       console.log('  wrote dist/sitemap.xml');
     } finally {

@@ -42,9 +42,10 @@ npm run cf:deploy
 ```
 
 The Worker (`worker.ts`) serves the prerendered static assets from `dist/` and
-handles the `/api/contact` endpoint. SPA fallback is enabled
-(`not_found_handling = "single-page-application"`) so unknown URLs fall back to
-the home page where React Router renders the 404 page.
+handles API routes (`/api/contact`, `/api/questionnaire`, etc.). Each public
+URL must be listed in `scripts/prerender.mjs` so Cloudflare can serve a real
+`index.html` (including `/questionnaire` and `/client-upload`, which stay out
+of the sitemap because they are `noindex`).
 
 Optional Worker Settings > Variables:
 - `CONTACT_TO_EMAIL` (default: `info@kicero.co.uk`) — contact form submissions
@@ -76,7 +77,8 @@ Optional Worker Settings > Variables:
 To add a new prerendered page, add the route in
 [`src/App.tsx`](src/App.tsx), an entry to `pageMeta` in
 [`src/seo/seoConfig.ts`](src/seo/seoConfig.ts), and append the path to
-the `routes` array in [`scripts/prerender.mjs`](scripts/prerender.mjs).
+`publicRoutes` or `privateRoutes` in [`scripts/prerender.mjs`](scripts/prerender.mjs)
+(use `privateRoutes` for `noindex` flows that should not appear in the sitemap).
 
 ## Analytics (optional)
 

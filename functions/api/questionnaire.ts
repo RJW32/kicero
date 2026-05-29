@@ -4,6 +4,7 @@ import {
   questionnaireQuestions,
 } from '../../src/data/questionnaire';
 import {buildClientUploadEmailParts} from '../../src/lib/clientUploadEmailParts';
+import {SENDGRID_DIRECT_LINK_TRACKING} from '../../src/lib/sendgridMail';
 
 interface Env {
   SENDGRID_API_KEY?: string;
@@ -151,6 +152,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         value: `<h2>${escapeHtml(subject)}</h2><pre>${escapeHtml(sectionText + filesText)}</pre>${uploadHtmlExtra}`,
       },
     ],
+    tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
   };
 
   const sendResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -183,6 +185,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
               'Thanks for completing our website questionnaire.\n\nA member at Kicero will contact you as soon as possible.',
           },
         ],
+        tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
       }),
     }).catch(() => null);
   }

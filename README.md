@@ -53,6 +53,12 @@ Optional Worker Settings > Variables:
 - `CONTACT_FROM_EMAIL` (default: `noreply@kicero.co.uk`) — SendGrid “from” address for outbound mail
 - `CONTACT_FROM_NAME` (default: `Website Contact Form`)
 
+SendGrid **click tracking** must stay off for questionnaire emails (links go directly to
+`https://kicero.co.uk/client-upload?...`). Rewritten `url####.kicero.co.uk` tracking URLs
+trigger browser impersonation warnings and can break signed upload tokens. The API sets
+`tracking_settings.click_tracking.enable: false` per message; also disable it under SendGrid
+→ Settings → Tracking → Click Tracking so older templates cannot re-enable it.
+
 ## SEO architecture
 
 - **Per-route metadata** lives in [`src/seo/seoConfig.ts`](src/seo/seoConfig.ts).

@@ -1,3 +1,5 @@
+import {SENDGRID_DIRECT_LINK_TRACKING} from '../../src/lib/sendgridMail';
+
 interface ContactPayload {
   name?: unknown;
   email?: unknown;
@@ -117,6 +119,7 @@ ${message}
       {type: 'text/plain', value: textContent},
       {type: 'text/html', value: htmlContent},
     ],
+    tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
   };
 
   try {

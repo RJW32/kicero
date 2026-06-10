@@ -34,21 +34,12 @@ const PREVIEW_HOST = '127.0.0.1';
 const PREVIEW_URL = `http://${PREVIEW_HOST}:${PREVIEW_PORT}`;
 const SITE_ORIGIN = 'https://kicero.co.uk';
 
-const blogSlugs = [
-  'how-much-should-a-small-business-website-cost-uk-2026',
-  'why-scottish-small-businesses-need-fast-simple-websites',
-  'custom-website-vs-wix-vs-squarespace',
-];
-
-/** Indexed marketing routes — included in dist/sitemap.xml */
 const publicRoutes = [
   '/',
   '/about',
   '/services',
   '/portfolio',
   '/contact',
-  '/blog',
-  ...blogSlugs.map((slug) => `/blog/${slug}`),
   '/privacy',
   '/terms',
 ];
@@ -215,18 +206,12 @@ async function writeRouteHtml(route, html) {
 // Per-URL freshness signals. `lastmod` is what Google uses to decide when to
 // recrawl, so honest dates beat "everything updated today every build".
 const FALLBACK_LASTMOD = '2026-05-22';
-const BLOG_LASTMOD = {
-  'how-much-should-a-small-business-website-cost-uk-2026': '2026-05-01',
-  'why-scottish-small-businesses-need-fast-simple-websites': '2026-04-22',
-  'custom-website-vs-wix-vs-squarespace': '2026-05-02',
-};
 const ROUTE_LASTMOD = {
   '/': '2026-05-22',
   '/about': '2026-05-22',
   '/services': '2026-05-20',
   '/portfolio': '2026-05-20',
   '/contact': '2026-05-20',
-  '/blog': '2026-05-22',
   '/privacy': '2026-05-20',
   '/terms': '2026-05-20',
   '/questionnaire': '2026-05-28',
@@ -234,18 +219,11 @@ const ROUTE_LASTMOD = {
 };
 
 function routeLastMod(route) {
-  if (ROUTE_LASTMOD[route]) return ROUTE_LASTMOD[route];
-  if (route.startsWith('/blog/')) {
-    const slug = route.slice('/blog/'.length);
-    return BLOG_LASTMOD[slug] ?? FALLBACK_LASTMOD;
-  }
-  return FALLBACK_LASTMOD;
+  return ROUTE_LASTMOD[route] ?? FALLBACK_LASTMOD;
 }
 
 function routePriorityAndFreq(route) {
   if (route === '/') return {priority: '1.0', changefreq: 'monthly'};
-  if (route === '/blog') return {priority: '0.8', changefreq: 'weekly'};
-  if (route.startsWith('/blog/')) return {priority: '0.7', changefreq: 'yearly'};
   if (route === '/privacy' || route === '/terms')
     return {priority: '0.3', changefreq: 'yearly'};
   return {priority: '0.8', changefreq: 'monthly'};

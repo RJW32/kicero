@@ -191,49 +191,56 @@
   }
 }
 
-/* Blog article body styling. */
-.kicero-prose h2 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  font-size: 1.5rem;
-  margin-top: 2.5rem;
-  margin-bottom: 1rem;
-  color: var(--color-brand-black);
+/* Questionnaire colour pickers — larger touch targets on mobile */
+.kicero-color-picker {
+  width: 100%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.kicero-prose h3 {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.125rem;
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
-  color: var(--color-brand-black);
+.kicero-color-picker .react-colorful {
+  width: 100%;
+  height: 260px;
+  gap: 14px;
 }
 
-.kicero-prose p {
-  margin-bottom: 1.25rem;
+.kicero-color-picker .react-colorful__saturation {
+  flex-grow: 1;
+  border-radius: 6px;
+  border-bottom: none;
 }
 
-.kicero-prose ol,
-.kicero-prose ul {
-  padding-left: 1.5rem;
-  margin-bottom: 1.5rem;
+.kicero-color-picker .react-colorful__hue {
+  height: 36px;
+  border-radius: 999px;
 }
 
-.kicero-prose ol {
-  list-style: decimal;
+.kicero-color-picker .react-colorful__saturation-pointer {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
 }
 
-.kicero-prose ul {
-  list-style: disc;
+.kicero-color-picker .react-colorful__hue-pointer {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
 }
 
-.kicero-prose li {
-  margin-bottom: 0.5rem;
-}
+@media (min-width: 640px) {
+  .kicero-color-picker .react-colorful {
+    height: 220px;
+  }
 
-.kicero-prose a {
-  text-decoration: underline;
+  .kicero-color-picker .react-colorful__hue {
+    height: 28px;
+  }
+
+  .kicero-color-picker .react-colorful__saturation-pointer,
+  .kicero-color-picker .react-colorful__hue-pointer {
+    width: 24px;
+    height: 24px;
+    border-width: 2px;
+  }
 }

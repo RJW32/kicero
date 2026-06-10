@@ -25,6 +25,7 @@ import {
   type QuestionnaireQuestion,
 } from '../data/questionnaire';
 import {usePersistentForm} from '../hooks/usePersistentForm';
+import {ColorPickerField} from './ColorPickerField';
 
 type AnswerValue = string | string[];
 
@@ -49,6 +50,19 @@ function clampParsedCount(raw: AnswerValue | undefined, max: number, min = 0): n
 
 function noopCheckToggle(_id: string, _option: string): void {
   /* renderQuestion expects a checkbox handler even for non-checkbox fields */
+}
+
+function QuestionLabel({question}: {question: QuestionnaireQuestion}) {
+  return (
+    <>
+      {question.label}
+      {question.optional === false ? (
+        <span className="text-red-500 ml-1">*</span>
+      ) : (
+        <span className="text-brand-gray-500 font-normal ml-2">(optional)</span>
+      )}
+    </>
+  );
 }
 
 function QuestionInfoDropdown({explainer}: {explainer: string}) {
@@ -451,6 +465,12 @@ export default function Questionnaire() {
       setError('Please add your name so we can reach you.');
       return;
     }
+    const businessName =
+      typeof value.answers.businessName === 'string' ? value.answers.businessName.trim() : '';
+    if (!businessName) {
+      setError('Please enter your business or website name.');
+      return;
+    }
     setStatus('submitting');
     setError('');
     try {
@@ -487,6 +507,21 @@ export default function Questionnaire() {
 
   const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (stepIndex === 0 && !value.clientName.trim()) {
+      setError('Please add your name so we can reach you.');
+      return;
+    }
+    if (
+      activeWizardStep?.kind === 'sections' &&
+      activeWizardStep.sectionKeys.includes('Business Basics')
+    ) {
+      const businessName =
+        typeof value.answers.businessName === 'string' ? value.answers.businessName.trim() : '';
+      if (!businessName) {
+        setError('Please enter your business or website name.');
+        return;
+      }
+    }
     if (stepIndex < totalSteps - 1) {
       setError('');
       setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
@@ -501,7 +536,7 @@ export default function Questionnaire() {
         <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight mb-4">
           Website Questionnaire
         </h1>
-        <p className="text-brand-gray-600 mb-2">Takes ~3 minutes. All questions optional.</p>
+        <p className="text-brand-gray-600 mb-2">All questions optional except where marked.</p>
         {ref && (
           <p className="inline-block text-xs uppercase tracking-widest bg-brand-black text-white px-3 py-1 mb-4">
             Ref: {ref}
@@ -642,23 +677,13 @@ export default function Questionnaire() {
                             {question.infoExplainer ? (
                               <div className="mb-2 w-full min-w-0 space-y-2">
                                 <label className="block text-sm font-semibold">
-                                  {question.label}
-                                  {question.optional !== false && (
-                                    <span className="text-brand-gray-500 font-normal ml-2">
-                                      (optional)
-                                    </span>
-                                  )}
+                                  <QuestionLabel question={question} />
                                 </label>
                                 <QuestionInfoDropdown explainer={question.infoExplainer} />
                               </div>
                             ) : (
                               <label className="mb-2 block text-sm font-semibold">
-                                {question.label}
-                                {question.optional !== false && (
-                                  <span className="text-brand-gray-500 font-normal ml-2">
-                                    (optional)
-                                  </span>
-                                )}
+                                <QuestionLabel question={question} />
                               </label>
                             )}
                             {question.description && (
@@ -763,6 +788,16 @@ function renderQuestion(
   setAnswer: (id: string, next: AnswerValue) => void,
   handleCheckToggle: (id: string, option: string) => void,
 ) {
+  if (question.type === 'color') {
+    const hex = typeof currentValue === 'string' ? currentValue : '';
+    return (
+      <ColorPickerField
+        value={hex}
+        onChange={(next) => setAnswer(question.id, next)}
+      />
+    );
+  }
+
   if (question.type === 'textarea') {
     return (
       <textarea
@@ -781,6 +816,7 @@ function renderQuestion(
         className="w-full border px-3 py-2"
         value={typeof currentValue === 'string' ? currentValue : ''}
         placeholder={question.placeholder}
+        required={question.optional === false}
         onChange={(e) => setAnswer(question.id, e.target.value)}
       />
     );

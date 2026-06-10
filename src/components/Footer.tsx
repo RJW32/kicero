@@ -25,7 +25,6 @@ const footerNav: Array<{
   {
     title: 'Resources',
     links: [
-      {label: 'Blog', to: '/blog'},
       {label: 'Privacy Policy', to: '/privacy'},
       {label: 'Terms of Service', to: '/terms'},
       {label: 'Cookie preferences', cookiePreferences: true},

@@ -2,6 +2,7 @@ import {
   orderedSelectedPages,
   pageLabelFromDetailSection,
   questionnaireQuestions,
+  type QuestionnaireQuestion,
 } from '../../data/questionnaire';
 import {buildClientUploadEmailParts} from '../clientUploadEmailParts';
 import {appendExtraPageFeesToSections} from '../questionnaireNotification';
@@ -77,6 +78,12 @@ export async function processQuestionnaireSubmission(
     return apiError(400, 'Please provide your name.');
   }
 
+  const businessName =
+    typeof answers.businessName === 'string' ? answers.businessName.trim() : '';
+  if (!businessName) {
+    return apiError(400, 'Please enter your business or website name.');
+  }
+
   const sendgridKey = env.SENDGRID_API_KEY;
   const toEmail = env.QUESTIONNAIRE_TO_EMAIL ?? 'forms@kicero.co.uk';
   const fromEmail = env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
@@ -96,7 +103,10 @@ export async function processQuestionnaireSubmission(
     clientUploadSecret: env.CLIENT_UPLOAD_SECRET,
   });
 
-  const sections = new Map<string, Array<{label: string; value: string}>>();
+  const sections = new Map<
+    string,
+    Array<{label: string; value: string; questionType: QuestionnaireQuestion['type']}>
+  >();
   for (const question of questionnaireQuestions) {
     const pageOnlyLabel = pageLabelFromDetailSection(question.section);
     if (pageOnlyLabel !== null && !orderedPagesAnswer.includes(pageOnlyLabel)) {
@@ -109,7 +119,11 @@ export async function processQuestionnaireSubmission(
         ? raw.trim()
         : '';
     const list = sections.get(question.section) ?? [];
-    list.push({label: question.label, value: value || '—'});
+    list.push({
+      label: question.label,
+      value: value || (question.type === 'color' ? 'Not selected' : '—'),
+      questionType: question.type,
+    });
     sections.set(question.section, list);
   }
 
@@ -138,7 +152,16 @@ ${sectionText}${filesText}${clientUploadParts.plainAppend}
   const sectionsHtml = Array.from(sections.entries())
     .map(([section, items]) => {
       const rows = items
-        .map((item) => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`)
+        .map((item) => {
+          const isColorValue =
+            item.questionType === 'color' &&
+            item.value !== '—' &&
+            /^#[0-9A-Fa-f]{6}$/.test(item.value);
+          if (isColorValue) {
+            return `<li><strong>${escapeHtml(item.label)}:</strong> <span style="display:inline-block;width:1.1em;height:1.1em;background:${escapeHtml(item.value)};border:1px solid #ccc;vertical-align:middle;margin-right:0.35em"></span>${escapeHtml(item.value)}</li>`;
+          }
+          return `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`;
+        })
         .join('');
       return `<h3>${escapeHtml(section)}</h3><ul>${rows}</ul>`;
     })

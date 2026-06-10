@@ -4,9 +4,7 @@ import {
   DEFAULT_OG_IMAGE_WIDTH,
   SITE_NAME,
   SITE_URL,
-  blogArticles,
   extraOrganizationSameAs,
-  findBlogArticle,
 } from './seoConfig';
 
 const ORG_ID = `${SITE_URL}/#organization`;
@@ -26,7 +24,7 @@ const FOUNDER_ID = `${SITE_URL}/about#person`;
  *
  * `founder` is intentionally omitted while the founder remains anonymous.
  * Once revealed, add a `Person` entry at `${SITE_URL}/about#person` and
- * cross-reference here + on `BlogPosting.author`.
+ * cross-reference here on future article `author` fields.
  */
 export const organizationSchema = {
   '@context': 'https://schema.org',
@@ -101,7 +99,7 @@ export const organizationSchema = {
 
 // TODO: once the founder is named, define and export `founderSchema` here as
 // '@type': 'Person', '@id': FOUNDER_ID, then add `founder: {'@id': FOUNDER_ID}`
-// to organizationSchema and `author: {'@id': FOUNDER_ID}` to buildArticleSchema.
+// to organizationSchema.
 // FOUNDER_ID is defined above so future wiring stays consistent.
 void FOUNDER_ID;
 
@@ -317,59 +315,6 @@ export const faqSchema = (
     },
   })),
 });
-
-const articleImageUrl = (ogImage: string | undefined): string => {
-  if (!ogImage) return DEFAULT_OG_IMAGE;
-  if (ogImage.startsWith('http://') || ogImage.startsWith('https://')) return ogImage;
-  return `${SITE_URL}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`;
-};
-
-export const blogListSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Blog',
-  url: `${SITE_URL}/blog`,
-  name: 'Kicero Blog',
-  description:
-    'Practical articles about building affordable, high-performing websites for small businesses in the UK.',
-  publisher: {'@id': ORG_ID},
-  inLanguage: 'en-GB',
-  blogPost: blogArticles.map((article) => ({
-    '@type': 'BlogPosting',
-    headline: article.title,
-    description: article.description,
-    datePublished: article.publishedAt,
-    dateModified: article.updatedAt,
-    url: `${SITE_URL}/blog/${article.slug}`,
-    image: articleImageUrl(article.ogImage),
-    // TODO: once the founder is named, swap `author` to `{'@id': FOUNDER_ID}`
-    // so each post is attributable to a real person (E-E-A-T signal).
-    author: {'@id': ORG_ID},
-    publisher: {'@id': ORG_ID},
-    inLanguage: 'en-GB',
-  })),
-};
-
-export const buildArticleSchema = (slug: string) => {
-  const article = findBlogArticle(slug);
-  if (!article) return null;
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: article.title,
-    description: article.description,
-    datePublished: article.publishedAt,
-    dateModified: article.updatedAt,
-    url: `${SITE_URL}/blog/${article.slug}`,
-    image: articleImageUrl(article.ogImage),
-    // TODO: once the founder is named, swap to `{'@id': FOUNDER_ID}`.
-    author: {'@id': ORG_ID},
-    publisher: {'@id': ORG_ID},
-    mainEntityOfPage: `${SITE_URL}/blog/${article.slug}`,
-    inLanguage: 'en-GB',
-    keywords:
-      'small business website, web design uk, scottish web design, custom website',
-  };
-};
 
 export const portfolioListSchema = (
   projects: ReadonlyArray<{

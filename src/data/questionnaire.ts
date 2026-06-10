@@ -24,7 +24,11 @@ interface ChoiceQuestion extends BaseQuestion {
   gridColumns?: number;
 }
 
-export type QuestionnaireQuestion = TextQuestion | ChoiceQuestion;
+interface ColorQuestion extends BaseQuestion {
+  type: 'color';
+}
+
+export type QuestionnaireQuestion = TextQuestion | ChoiceQuestion | ColorQuestion;
 
 /** Must match the Pages checkbox order; used for per-page follow-up steps. */
 export const PAGE_OPTIONS_ORDER = [
@@ -431,9 +435,9 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
   {
     id: 'businessName',
     section: 'Business Basics',
-    label: 'Business name',
+    label: 'Business Name / Website Name',
     type: 'text',
-    optional: true,
+    optional: false,
   },
   {
     id: 'businessSummary',
@@ -480,10 +484,24 @@ const questionnaireQuestions: QuestionnaireQuestion[] = [
     optional: true,
   },
   {
-    id: 'preferredColours',
+    id: 'primaryColour',
     section: 'Colour Preferences',
-    label: 'Preferred main colours',
-    type: 'text',
+    label: 'Primary colour',
+    type: 'color',
+    optional: true,
+  },
+  {
+    id: 'secondaryColour',
+    section: 'Colour Preferences',
+    label: 'Secondary colour',
+    type: 'color',
+    optional: true,
+  },
+  {
+    id: 'thirdColour',
+    section: 'Colour Preferences',
+    label: 'Third colour',
+    type: 'color',
     optional: true,
   },
   {

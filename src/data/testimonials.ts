@@ -8,17 +8,17 @@ export interface Testimonial {
 export const testimonials: ReadonlyArray<Testimonial> = [
   {
     quote:
-      'Kicero turned my small business idea into a site that actually looked like a real brand. Quick, simple, and a fraction of what I was quoted elsewhere.',
-    name: 'Eilidh M.',
-    role: 'Independent Practitioner',
-    location: 'Edinburgh',
+      'First time using a website for my sales, so good, I love all the features and high end specs my website has now. Great price, great for beginner websites aswell.',
+    name: 'Finlay',
+    role: 'One Step',
+    location: 'Scotland',
   },
   {
     quote:
-      'I have used Wix for years. Switching to Kicero made the site noticeably faster and the monthly cost is the same. Worth it.',
-    name: 'Callum R.',
-    role: 'Cafe Owner',
-    location: 'Glasgow',
+      'Kicero delivers clean, modern, and practical website designs that provide a comfortable and intuitive user experience. This Scottish startup is led by a founder who is fully committed to delivering the best results for every client. I highly recommend Kicero to anyone looking to build their own professional website.',
+    name: 'Nodiya A.',
+    role: 'One Step',
+    location: 'Scotland',
   },
   {
     quote:
@@ -26,5 +26,11 @@ export const testimonials: ReadonlyArray<Testimonial> = [
     name: 'Project Lead',
     role: 'One Step',
     location: 'Scotland',
+  },
+  {
+    quote: 'This could be you!',
+    name: 'Your business',
+    role: 'Kicero client',
+    location: 'Location',
   },
 ];

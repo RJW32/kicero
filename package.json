@@ -32,6 +32,7 @@
     "motion": "^12.23.24",
     "multer": "^2.1.1",
     "react": "^19.0.1",
+    "react-colorful": "^5.7.0",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.14.2"
   },

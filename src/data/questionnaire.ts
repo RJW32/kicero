@@ -199,7 +199,7 @@ export function buildClientUploadHrefSigned(siteOrigin: string, signedToken: str
   return u.href;
 }
 
-type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never;
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 type QuestionWithoutSection = DistributiveOmit<QuestionnaireQuestion, 'section'>;
 

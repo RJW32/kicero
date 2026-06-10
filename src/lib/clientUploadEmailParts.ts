@@ -52,7 +52,7 @@ export async function buildClientUploadEmailParts(options: {
     };
   }
 
-  let href: string | null = null;
+  let href: string | null;
   let bucketFolder: string | null = null;
 
   if (secret) {

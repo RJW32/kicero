@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  COOKIE_CONSENT_VERSION,
   getInitialConsentFromStorage,
   writeStoredConsent,
 } from '../lib/cookieConsentStorage';

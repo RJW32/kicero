@@ -51,7 +51,7 @@ async function importHmacKey(secret: string): Promise<CryptoKey> {
 /** Slug usable as an R2 path segment combining display name + disambiguator. */
 export function buildClientUploadFolder(clientName: string, ref: string): string {
   const raw = clientName.trim() || 'client';
-  let namePart = raw
+  const namePart = raw
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 48) || 'client';

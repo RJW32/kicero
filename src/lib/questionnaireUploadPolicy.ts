@@ -50,8 +50,8 @@ export function buildClientMediaObjectKey(params: {
   pageSlug: string;
   filename: string;
 }): string {
-  const folder = params.folder.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 80);
-  const page = params.pageSlug.replace(/[^a-zA-Z0-9._\-]/g, '_').slice(0, 64);
+  const folder = params.folder.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+  const page = params.pageSlug.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 64);
   const safeName = params.filename.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
   const day = new Date().toISOString().slice(0, 10);
   return `client-media/${folder}/${page}/${day}-${safeName}`;

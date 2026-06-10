@@ -392,11 +392,15 @@ export default function Questionnaire() {
     });
   }, [restored, setValue]);
 
+  // Key the memo off the selection *set* so reorderings/reference changes don't rebuild steps.
   const pagesSelectionKey = Array.isArray(value.answers.pagesWanted)
     ? [...value.answers.pagesWanted].sort().join('\0')
     : '';
   const wizardSteps = useMemo(
-    () => buildQuestionnaireWizardSteps(orderedSelectedPages(value.answers.pagesWanted)),
+    () =>
+      buildQuestionnaireWizardSteps(
+        orderedSelectedPages(pagesSelectionKey ? pagesSelectionKey.split('\0') : []),
+      ),
     [pagesSelectionKey],
   );
 

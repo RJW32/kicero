@@ -1,39 +1,28 @@
+/**
+ * Production Cloudflare Worker: routes /api/* to the shared handlers in
+ * src/lib/api/ and serves the prerendered static site for everything else.
+ * The local Express equivalent lives in server.ts.
+ */
+import {processContactSubmission} from './src/lib/api/contact';
 import {
-  CLIENT_UPLOAD_BRANDING_LABEL,
-  isAllowedClientUploadPageLabel,
-  orderedSelectedPages,
-  pageLabelFromDetailSection,
-  questionnaireQuestions,
-} from './src/data/questionnaire';
-import {buildClientUploadEmailParts} from './src/lib/clientUploadEmailParts';
-import {appendExtraPageFeesToSections} from './src/lib/questionnaireNotification';
-import {SENDGRID_DIRECT_LINK_TRACKING} from './src/lib/sendgridMail';
-import {
-  pageSlugFromLabel,
-  verifyClientUploadToken,
-} from './src/lib/clientUploadToken';
-import {
-  assertAllowedBrandingPortalUpload,
-  assertAllowedClientPortalUpload,
-  assertAllowedUpload,
-  buildClientMediaObjectKey,
-  buildObjectKey,
-} from './src/lib/questionnaireUploadPolicy';
-import {
-  hasR2SigningCredentials,
-  getPresignedPutUrl,
-  type R2SigningEnv,
-} from './src/lib/r2Presign';
-
-interface ContactPayload {
-  name?: unknown;
-  email?: unknown;
-  message?: unknown;
-  website?: unknown;
-}
+  processClientUploadPresign,
+  processQuestionnaireUploadUrl,
+  type PresignEnv,
+} from './src/lib/api/presign';
+import {processQuestionnaireSubmission} from './src/lib/api/questionnaire';
+import {apiError, type ApiResult} from './src/lib/api/shared';
+import {assertAllowedUpload, buildObjectKey} from './src/lib/questionnaireUploadPolicy';
 
 interface AssetFetcher {
   fetch: (request: Request) => Promise<Response>;
+}
+
+interface R2Bucket {
+  put: (
+    key: string,
+    value: ArrayBuffer | ArrayBufferView | string | ReadableStream | Blob,
+    options?: {httpMetadata?: {contentType?: string}},
+  ) => Promise<void>;
 }
 
 interface Env {
@@ -58,261 +47,67 @@ interface Env {
   CLIENT_UPLOAD_SECRET?: string;
 }
 
-interface R2Bucket {
-  put: (
-    key: string,
-    value: ArrayBuffer | ArrayBufferView | string | ReadableStream | Blob,
-    options?: {httpMetadata?: {contentType?: string}},
-  ) => Promise<void>;
-}
-
-interface QuestionnairePayload {
-  clientName?: unknown;
-  clientEmail?: unknown;
-  ref?: unknown;
-  answers?: unknown;
-  files?: unknown;
-  website?: unknown;
-}
-
-interface UploadedAsset {
-  key: string;
-  url: string;
-  filename: string;
-  size: number;
-  contentType: string;
-  relativePath?: string;
-}
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Enquiries inbox; CONTACT_TO_EMAIL is often confused with CONTACT_FROM_EMAIL (noreply). */
-function contactSubmissionRecipient(raw: string | undefined): string {
-  const t = raw?.trim();
-  if (!t || t.toLowerCase() === 'noreply@kicero.co.uk') return 'info@kicero.co.uk';
-  return t;
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
+function toResponse(result: ApiResult): Response {
+  return new Response(JSON.stringify(result.body), {
+    status: result.status,
     headers: {'Content-Type': 'application/json'},
   });
 }
 
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+function presignEnv(env: Env): PresignEnv {
+  return {
+    R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
+    R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
+    R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
+    R2_BUCKET_NAME: env.R2_BUCKET_NAME,
+    R2_S3_ENDPOINT: env.R2_S3_ENDPOINT,
+    R2_PUBLIC_BASE: env.R2_PUBLIC_BASE,
+  };
+}
+
+const METHOD_NOT_ALLOWED = apiError(405, 'Method not allowed.');
+const INVALID_JSON = apiError(400, 'Invalid JSON body.');
+
+async function readJsonBody(request: Request): Promise<unknown | null> {
+  return request.json().catch(() => null);
 }
 
 async function handleContact(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') {
     return new Response(null, {status: 204});
   }
+  if (request.method !== 'POST') return toResponse(METHOD_NOT_ALLOWED);
 
-  if (request.method !== 'POST') {
-    return jsonResponse({error: 'Method not allowed.'}, 405);
-  }
-
-  let body: ContactPayload;
-  try {
-    body = (await request.json()) as ContactPayload;
-  } catch {
-    return jsonResponse({error: 'Invalid JSON body.'}, 400);
-  }
-
-  const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const message = typeof body.message === 'string' ? body.message.trim() : '';
-  const website = typeof body.website === 'string' ? body.website.trim() : '';
-
-  if (website) {
-    return jsonResponse({ok: true}, 200);
-  }
-
-  if (!name || !email || !message) {
-    return jsonResponse({error: 'Missing required fields.'}, 400);
-  }
-
-  if (!emailRegex.test(email)) {
-    return jsonResponse({error: 'Invalid email format.'}, 400);
-  }
-
-  if (name.length > 200 || email.length > 320 || message.length > 5000) {
-    return jsonResponse({error: 'Input exceeds allowed length.'}, 400);
-  }
-
-  const sendgridKey = env.SENDGRID_API_KEY;
-  const toEmail = contactSubmissionRecipient(env.CONTACT_TO_EMAIL);
-  const fromEmail = env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
-  const fromName = env.CONTACT_FROM_NAME ?? 'Website Contact Form';
-
-  if (!sendgridKey) {
-    return jsonResponse({error: 'Server email configuration is missing.'}, 500);
-  }
-
-  const safeName = escapeHtml(name);
-  const safeEmail = escapeHtml(email);
-  const safeMessage = escapeHtml(message).replaceAll('\n', '<br/>');
-
-  const textContent = `New contact form submission
-
-Name: ${name}
-Email: ${email}
-
-Message:
-${message}
-`;
-
-  const htmlContent = `
-    <h2>New contact form submission</h2>
-    <p><strong>Name:</strong> ${safeName}</p>
-    <p><strong>Email:</strong> ${safeEmail}</p>
-    <p><strong>Message:</strong><br/>${safeMessage}</p>
-  `.trim();
-
-  const payload = {
-    personalizations: [{to: [{email: toEmail}]}],
-    from: {
-      email: fromEmail,
-      name: fromName,
-    },
-    reply_to: {
-      email,
-    },
-    subject: `Contact form: ${name}`,
-    content: [
-      {type: 'text/plain', value: textContent},
-      {type: 'text/html', value: htmlContent},
-    ],
-    tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
-  };
-
-  try {
-    const sendgridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${sendgridKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!sendgridResponse.ok) {
-      const providerErrorText = await sendgridResponse.text();
-      return jsonResponse(
-        {
-          error: 'Email provider request failed.',
-          providerStatus: sendgridResponse.status,
-          providerMessage: providerErrorText.slice(0, 500),
-        },
-        502,
-      );
-    }
-
-    return jsonResponse({ok: true}, 200);
-  } catch {
-    return jsonResponse({error: 'Failed to reach email provider.'}, 502);
-  }
-}
-
-function formatSize(size: number): string {
-  if (!Number.isFinite(size) || size < 0) return '0 B';
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-interface UploadUrlPayload {
-  filename?: unknown;
-  contentType?: unknown;
-  size?: unknown;
-  relativePath?: unknown;
-  batchId?: unknown;
+  const body = await readJsonBody(request);
+  if (body === null) return toResponse(INVALID_JSON);
+  return toResponse(await processContactSubmission(body, env));
 }
 
 async function handleQuestionnaireUploadUrl(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    return jsonResponse({error: 'Method not allowed.'}, 405);
-  }
+  if (request.method !== 'POST') return toResponse(METHOD_NOT_ALLOWED);
 
-  const body = (await request.json().catch(() => null)) as UploadUrlPayload | null;
-  if (!body) return jsonResponse({error: 'Invalid JSON body.'}, 400);
-
-  const filename = typeof body.filename === 'string' ? body.filename : '';
-  const contentType =
-    typeof body.contentType === 'string' && body.contentType.length > 0
-      ? body.contentType
-      : 'application/octet-stream';
-  const size = typeof body.size === 'number' ? body.size : Number.NaN;
-  const relativePath =
-    typeof body.relativePath === 'string' ? body.relativePath.trim() : undefined;
-  const batchIdRaw = typeof body.batchId === 'string' ? body.batchId.trim() : '';
-  if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
-    return jsonResponse({error: 'batchId must be a UUID so folder uploads stay grouped.'}, 400);
-  }
-  const batchId = batchIdRaw;
-
-  const v = assertAllowedUpload({filename, contentType, size, relativePath});
-  if (v.error) return jsonResponse({error: v.error}, 400);
-
-  const signingEnv: Partial<R2SigningEnv> = {
-    R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
-    R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
-    R2_BUCKET_NAME: env.R2_BUCKET_NAME,
-    R2_S3_ENDPOINT: env.R2_S3_ENDPOINT,
-  };
-
-  if (!hasR2SigningCredentials(signingEnv)) {
-    return jsonResponse(
-      {
-        error:
-          'Direct upload is not configured. Set R2_ACCOUNT_ID and R2 API token credentials on the worker.',
-        code: 'NO_PRESIGN',
-      },
-      503,
-    );
-  }
-
-  const key = buildObjectKey({
-    filename,
-    relativePath: relativePath?.length ? relativePath : undefined,
-    submissionId: batchId,
-  });
-
-  const putUrl = await getPresignedPutUrl(signingEnv, {
-    key,
-    contentType,
-    expiresIn: 3600,
-  });
-
-  const base = (env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
-  const publicUrl = base ? `${base}/${key}` : key;
-  const displayName = relativePath?.length ? relativePath : filename;
-
-  return jsonResponse({
-    putUrl,
-    key,
-    url: publicUrl,
-    filename: displayName,
-    expiresIn: 3600,
-  });
+  const body = await readJsonBody(request);
+  if (body === null) return toResponse(INVALID_JSON);
+  return toResponse(
+    await processQuestionnaireUploadUrl(body, {
+      env: presignEnv(env),
+      notConfigured: apiError(
+        503,
+        'Direct upload is not configured. Set R2_ACCOUNT_ID and R2 API token credentials on the worker.',
+        {code: 'NO_PRESIGN'},
+      ),
+    }),
+  );
 }
 
+/** Same-origin multipart fallback: streams the file straight into R2. */
 async function handleQuestionnaireUpload(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    return jsonResponse({error: 'Method not allowed.'}, 405);
-  }
+  if (request.method !== 'POST') return toResponse(METHOD_NOT_ALLOWED);
 
   const formData = await request.formData().catch(() => null);
   const file = formData?.get('file');
   if (!(file instanceof File)) {
-    return jsonResponse({error: 'Expected file upload.'}, 400);
+    return toResponse(apiError(400, 'Expected file upload.'));
   }
 
   const batchIdRaw =
@@ -323,13 +118,12 @@ async function handleQuestionnaireUpload(request: Request, env: Env): Promise<Re
     typeof formData?.get('relativePath') === 'string'
       ? (formData.get('relativePath') as string).trim()
       : '';
-
-  const relativePath = relativePathRaw?.length ? relativePathRaw : undefined;
+  const relativePath = relativePathRaw.length ? relativePathRaw : undefined;
 
   let batchId: string | undefined;
   if (batchIdRaw) {
     if (!/^[a-f0-9-]{36}$/i.test(batchIdRaw)) {
-      return jsonResponse({error: 'batchId must be a UUID so folder uploads stay grouped.'}, 400);
+      return toResponse(apiError(400, 'batchId must be a UUID so folder uploads stay grouped.'));
     }
     batchId = batchIdRaw;
   }
@@ -342,14 +136,10 @@ async function handleQuestionnaireUpload(request: Request, env: Env): Promise<Re
     size: file.size,
     relativePath,
   });
-  if (v.error) return jsonResponse({error: v.error}, 400);
+  if (v.error) return toResponse(apiError(400, v.error));
 
   const key = batchId
-    ? buildObjectKey({
-        filename: file.name,
-        relativePath,
-        submissionId: batchId,
-      })
+    ? buildObjectKey({filename: file.name, relativePath, submissionId: batchId})
     : `submissions/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
   await env.R2_BUCKET.put(key, file.stream(), {
@@ -358,273 +148,41 @@ async function handleQuestionnaireUpload(request: Request, env: Env): Promise<Re
 
   const base = (env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
   const url = base ? `${base}/${key}` : key;
-  const displayName = relativePath?.length ? relativePath : file.name;
 
-  return jsonResponse({
-    key,
-    url,
-    filename: displayName,
-    size: file.size,
-    contentType,
-    ...(relativePath ? {relativePath} : {}),
+  return toResponse({
+    status: 200,
+    body: {
+      key,
+      url,
+      filename: relativePath ?? file.name,
+      size: file.size,
+      contentType,
+      ...(relativePath ? {relativePath} : {}),
+    },
   });
-}
-
-interface ClientUploadPresignPayload {
-  token?: unknown;
-  pageLabel?: unknown;
-  filename?: unknown;
-  contentType?: unknown;
-  size?: unknown;
 }
 
 async function handleClientUploadPresign(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    return jsonResponse({error: 'Method not allowed.'}, 405);
-  }
+  if (request.method !== 'POST') return toResponse(METHOD_NOT_ALLOWED);
 
-  const secret = env.CLIENT_UPLOAD_SECRET?.trim();
-  if (!secret) {
-    return jsonResponse({error: 'Client uploads are not configured.', code: 'NO_CLIENT_UPLOAD'}, 503);
-  }
-
-  const body = (await request.json().catch(() => null)) as ClientUploadPresignPayload | null;
-  if (!body) return jsonResponse({error: 'Invalid JSON body.'}, 400);
-
-  const token = typeof body.token === 'string' ? body.token : '';
-  const pageLabel = typeof body.pageLabel === 'string' ? body.pageLabel.trim() : '';
-  const filename = typeof body.filename === 'string' ? body.filename : '';
-  const contentType =
-    typeof body.contentType === 'string' && body.contentType.length > 0
-      ? body.contentType
-      : 'application/octet-stream';
-  const size = typeof body.size === 'number' ? body.size : Number.NaN;
-
-  if (!token || !pageLabel || !filename) {
-    return jsonResponse({error: 'token, pageLabel, and filename are required.'}, 400);
-  }
-
-  const payload = await verifyClientUploadToken(secret, token);
-  if (!payload || !isAllowedClientUploadPageLabel(pageLabel, payload.pages)) {
-    return jsonResponse({error: 'Invalid or expired upload link.'}, 403);
-  }
-
-  const pageSlug = pageSlugFromLabel(pageLabel);
-  const v =
-    pageLabel === CLIENT_UPLOAD_BRANDING_LABEL
-      ? assertAllowedBrandingPortalUpload({
-          filename,
-          contentType,
-          size,
-        })
-      : assertAllowedClientPortalUpload({
-          filename,
-          contentType,
-          size,
-        });
-  if (v.error) return jsonResponse({error: v.error}, 400);
-
-  const signingEnv: Partial<R2SigningEnv> = {
-    R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
-    R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
-    R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
-    R2_BUCKET_NAME: env.R2_BUCKET_NAME,
-    R2_S3_ENDPOINT: env.R2_S3_ENDPOINT,
-  };
-
-  if (!hasR2SigningCredentials(signingEnv)) {
-    return jsonResponse(
-      {
-        error:
-          'Direct upload is not configured. Set R2_ACCOUNT_ID and R2 API token credentials on the worker.',
-        code: 'NO_PRESIGN',
-      },
-      503,
-    );
-  }
-
-  const key = buildClientMediaObjectKey({
-    folder: payload.folder,
-    pageSlug,
-    filename,
-  });
-
-  try {
-    const putUrl = await getPresignedPutUrl(signingEnv, {
-      key,
-      contentType,
-      expiresIn: 3600,
-    });
-    const base = (env.R2_PUBLIC_BASE ?? '').replace(/\/$/, '');
-    const publicUrl = base ? `${base}/${key}` : key;
-    return jsonResponse({
-      putUrl,
-      key,
-      url: publicUrl,
-      filename,
-      expiresIn: 3600,
-    });
-  } catch {
-    return jsonResponse({error: 'Could not create upload URL.'}, 500);
-  }
+  const body = await readJsonBody(request);
+  if (body === null) return toResponse(INVALID_JSON);
+  return toResponse(
+    await processClientUploadPresign(body, {
+      env: presignEnv(env),
+      clientUploadSecret: env.CLIENT_UPLOAD_SECRET,
+    }),
+  );
 }
 
 async function handleQuestionnaire(request: Request, env: Env): Promise<Response> {
-  if (request.method !== 'POST') {
-    return jsonResponse({error: 'Method not allowed.'}, 405);
-  }
+  if (request.method !== 'POST') return toResponse(METHOD_NOT_ALLOWED);
 
-  const body = (await request.json().catch(() => null)) as QuestionnairePayload | null;
-  if (!body) return jsonResponse({error: 'Invalid JSON body.'}, 400);
-
-  const clientName = typeof body.clientName === 'string' ? body.clientName.trim() : '';
-  const clientEmail =
-    typeof body.clientEmail === 'string' ? body.clientEmail.trim().toLowerCase() : '';
-  const ref = typeof body.ref === 'string' ? body.ref.trim() : '';
-  const website = typeof body.website === 'string' ? body.website.trim() : '';
-  const answers =
-    body.answers && typeof body.answers === 'object'
-      ? (body.answers as Record<string, unknown>)
-      : {};
-  const files = Array.isArray(body.files) ? (body.files as UploadedAsset[]) : [];
-
-  if (website) return jsonResponse({ok: true}, 200);
-
-  const hasClientEmail = emailRegex.test(clientEmail);
-
-  if (!clientName) {
-    return jsonResponse({error: 'Please provide your name.'}, 400);
-  }
-
-  const sendgridKey = env.SENDGRID_API_KEY;
-  const toEmail = env.QUESTIONNAIRE_TO_EMAIL ?? 'forms@kicero.co.uk';
-  const fromEmail = env.CONTACT_FROM_EMAIL ?? 'noreply@kicero.co.uk';
-  const fromName = env.CONTACT_FROM_NAME ?? 'Website Questionnaire';
-  if (!sendgridKey) return jsonResponse({error: 'Server email configuration is missing.'}, 500);
-
-  const orderedPagesAnswer = orderedSelectedPages(
-    Array.isArray(answers.pagesWanted) ? (answers.pagesWanted as string[]) : [],
+  const body = await readJsonBody(request);
+  if (body === null) return toResponse(INVALID_JSON);
+  return toResponse(
+    await processQuestionnaireSubmission(body, {requestUrl: request.url, env}),
   );
-
-  const clientUploadParts = await buildClientUploadEmailParts({
-    requestUrl: request.url,
-    publicSiteUrl: env.PUBLIC_SITE_URL,
-    clientName,
-    ref,
-    orderedPages: orderedPagesAnswer,
-    clientUploadSecret: env.CLIENT_UPLOAD_SECRET,
-    escapeHtmlBody: escapeHtml,
-  });
-
-  const clientUploadNotice = clientUploadParts.plainAppend;
-  const uploadHtmlExtra = clientUploadParts.htmlAppend;
-
-  const sections = new Map<string, Array<{label: string; value: string}>>();
-  for (const question of questionnaireQuestions) {
-    const pageOnlyLabel = pageLabelFromDetailSection(question.section);
-    if (pageOnlyLabel !== null && !orderedPagesAnswer.includes(pageOnlyLabel)) {
-      continue;
-    }
-    const raw = answers[question.id];
-    const value = Array.isArray(raw)
-      ? raw.join(', ')
-      : typeof raw === 'string'
-        ? raw.trim()
-        : '';
-    const list = sections.get(question.section) ?? [];
-    list.push({label: question.label, value: value || '—'});
-    sections.set(question.section, list);
-  }
-
-  appendExtraPageFeesToSections(sections, answers.pagesWanted);
-
-  const sectionText = Array.from(sections.entries())
-    .map(([section, items]) => {
-      const rows = items.map((item) => `${item.label}: ${item.value}`).join('\n');
-      return `${section}\n${rows}`;
-    })
-    .join('\n\n');
-
-  const filesText = files.length
-    ? `\n\nUploaded files:\n${files.map((file) => `- ${file.filename}: ${file.url}`).join('\n')}`
-    : '\n\nUploaded files:\n- None';
-
-  const textContent = `New questionnaire submission
-
-Client name: ${clientName}
-Client email: ${hasClientEmail ? clientEmail : 'Not provided'}
-Ref: ${ref || '—'}
-
-${sectionText}${filesText}${clientUploadNotice}
-`;
-
-  const sectionsHtml = Array.from(sections.entries())
-    .map(([section, items]) => {
-      const rows = items
-        .map((item) => `<li><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</li>`)
-        .join('');
-      return `<h3>${escapeHtml(section)}</h3><ul>${rows}</ul>`;
-    })
-    .join('');
-  const filesHtml = files.length
-    ? `<h3>Uploaded files</h3><ul>${files
-        .map(
-          (file) =>
-            `<li><a href="${escapeHtml(file.url)}">${escapeHtml(file.filename)}</a> (${formatSize(file.size)})</li>`,
-        )
-        .join('')}</ul>`
-    : '<h3>Uploaded files</h3><p>None</p>';
-
-  const subject = `Questionnaire: ${clientName}${ref ? ` [${ref}]` : ''}`;
-  const payload = {
-    personalizations: [{to: [{email: toEmail}]}],
-    from: {email: fromEmail, name: fromName},
-    ...(hasClientEmail ? {reply_to: {email: clientEmail}} : {}),
-    subject,
-    content: [
-      {type: 'text/plain', value: textContent},
-      {type: 'text/html', value: `<h2>${escapeHtml(subject)}</h2>${sectionsHtml}${filesHtml}${uploadHtmlExtra}`},
-    ],
-    tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
-  };
-
-  const sendResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${sendgridKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!sendResponse.ok) {
-    return jsonResponse({error: 'Email provider request failed.'}, 502);
-  }
-
-  if (hasClientEmail) {
-    const autoReplyPayload = {
-      personalizations: [{to: [{email: clientEmail}]}],
-      from: {email: fromEmail, name: 'Kicero'},
-      subject: "We've received your questionnaire - Kicero",
-      content: [
-        {
-          type: 'text/plain',
-          value:
-            'Thanks for completing our website questionnaire.\n\nA member at Kicero will contact you as soon as possible.',
-        },
-      ],
-      tracking_settings: SENDGRID_DIRECT_LINK_TRACKING,
-    };
-    await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${sendgridKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(autoReplyPayload),
-    }).catch(() => null);
-  }
-
-  return jsonResponse({ok: true}, 200);
 }
 
 export default {

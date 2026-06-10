@@ -1,16 +1,11 @@
 import {describe, expect, it} from 'vitest';
-import {buildClientUploadEmailParts, escapeAttr} from './clientUploadEmailParts';
+import {escapeHtml} from './api/shared';
+import {buildClientUploadEmailParts} from './clientUploadEmailParts';
 import {verifyClientUploadToken} from './clientUploadToken';
 
-const escapeHtmlBody = (input: string) =>
-  input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
-
-describe('escapeAttr', () => {
-  it('escapes HTML attribute characters', () => {
-    expect(escapeAttr(`<a href="x">&'`)).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&#039;');
+describe('escapeHtml', () => {
+  it('escapes HTML special characters', () => {
+    expect(escapeHtml(`<a href="x">&'`)).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&#039;');
   });
 });
 
@@ -19,7 +14,6 @@ describe('buildClientUploadEmailParts', () => {
     requestUrl: 'https://kicero.co.uk/api/questionnaire',
     clientName: 'Acme Ltd',
     ref: 'REF42',
-    escapeHtmlBody,
   };
 
   it('returns a "not generated" stub when no pages are selected', async () => {

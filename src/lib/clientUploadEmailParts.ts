@@ -3,21 +3,12 @@ import {
   buildClientUploadHrefSigned,
   questionnaireSiteOrigin,
 } from '../data/questionnaire';
+import {escapeHtml} from './api/shared';
 import {
   CLIENT_UPLOAD_TOKEN_TTL_SECONDS,
   buildClientUploadFolder,
   mintClientUploadToken,
 } from './clientUploadToken';
-
-/** Escape plain URL for embedding in HTML attribute (href). */
-export function escapeAttr(input: string): string {
-  return input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
 
 export type ClientUploadEmailParts = {
   href: string | null;
@@ -34,7 +25,6 @@ export async function buildClientUploadEmailParts(options: {
   ref: string;
   orderedPages: readonly string[];
   clientUploadSecret?: string;
-  escapeHtmlBody: (input: string) => string;
 }): Promise<ClientUploadEmailParts> {
   const origin = questionnaireSiteOrigin(options.requestUrl, options.publicSiteUrl);
   const pages = [...options.orderedPages];
@@ -86,9 +76,9 @@ export async function buildClientUploadEmailParts(options: {
     plainAppend += `\n\nR2 folder prefix:\nclient-media/${bucketFolder}/`;
   }
 
-  let htmlAppend = `<p><strong>Client asset upload URL:</strong> <a href="${escapeAttr(href)}">${options.escapeHtmlBody(href)}</a></p>`;
+  let htmlAppend = `<p><strong>Client asset upload URL:</strong> <a href="${escapeHtml(href)}">${escapeHtml(href)}</a></p>`;
   if (bucketFolder) {
-    htmlAppend += `<p><strong>R2 folder prefix:</strong> <code>${options.escapeHtmlBody(`client-media/${bucketFolder}/`)}</code></p>`;
+    htmlAppend += `<p><strong>R2 folder prefix:</strong> <code>${escapeHtml(`client-media/${bucketFolder}/`)}</code></p>`;
   }
 
   return {href, bucketFolder, plainAppend, htmlAppend};

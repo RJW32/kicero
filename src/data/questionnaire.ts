@@ -1,6 +1,4 @@
-export type QuestionType = 'text' | 'textarea' | 'email' | 'radio' | 'checkbox';
-
-export interface BaseQuestion {
+interface BaseQuestion {
   id: string;
   section: string;
   label: string;
@@ -14,12 +12,12 @@ export interface BaseQuestion {
   infoExplainer?: string;
 }
 
-export interface TextQuestion extends BaseQuestion {
+interface TextQuestion extends BaseQuestion {
   type: 'text' | 'textarea' | 'email';
   placeholder?: string;
 }
 
-export interface ChoiceQuestion extends BaseQuestion {
+interface ChoiceQuestion extends BaseQuestion {
   type: 'radio' | 'checkbox';
   options: string[];
   /** Checkbox groups only: renders options in a CSS grid with this many columns. */
@@ -70,7 +68,7 @@ export function orderedSelectedPages(pagesRaw: string | string[] | undefined): s
 }
 
 /** Client-facing stub upload UI (linked from questionnaire notification email). */
-export const CLIENT_UPLOAD_PATH = '/client-upload' as const;
+const CLIENT_UPLOAD_PATH = '/client-upload';
 
 /** Always available on the client upload portal (not tied to questionnaire page picks). */
 export const CLIENT_UPLOAD_BRANDING_LABEL = 'Business branding' as const;
@@ -570,12 +568,8 @@ If you are not happy with the alternative quote you may still opt for our standa
 
 export {questionnaireQuestions};
 
-export const questionnaireQuestionMap = new Map(
-  questionnaireQuestions.map((question) => [question.id, question]),
-);
-
 /** Ordered wizard steps — each entry is section key(s); Colour + Fonts stay on one step. */
-export const questionnaireStepSections: string[][] = [
+const questionnaireStepSections: string[][] = [
   ['Business Basics'],
   ['Brand & Style'],
   ['Colour Preferences', 'Fonts'],

@@ -9,14 +9,13 @@ export const SITE_NAME = 'Kicero';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.svg`;
 export const DEFAULT_OG_IMAGE_WIDTH = '1200';
 export const DEFAULT_OG_IMAGE_HEIGHT = '630';
-export const SITE_LOCALE = 'en_GB';
 
 /**
  * Canonical Wikidata item for the Kicero organization (`sameAs` / Knowledge Graph).
  * @see https://www.wikidata.org/wiki/Q139890611
  */
-export const WIKIDATA_ORGANIZATION_ENTITY =
-  'https://www.wikidata.org/wiki/Q139890611' as const;
+const WIKIDATA_ORGANIZATION_ENTITY =
+  'https://www.wikidata.org/wiki/Q139890611';
 
 /**
  * Extra `Organization.sameAs` URLs (Wikidata is always included below; add
@@ -140,22 +139,6 @@ export const pageMeta: Record<string, PageMeta> = {
     path: '/404',
     noindex: true,
   },
-};
-
-/**
- * Stable last-modified dates per route. Update when the page content
- * meaningfully changes. Sitemap freshness signal — Google uses `lastmod` to
- * decide when to recrawl, so honest dates beat "everything updated today".
- */
-export const pageLastModified: Record<string, string> = {
-  '/': '2026-05-22',
-  '/about': '2026-05-22',
-  '/services': '2026-05-20',
-  '/portfolio': '2026-05-20',
-  '/contact': '2026-05-20',
-  '/blog': '2026-05-22',
-  '/privacy': '2026-05-20',
-  '/terms': '2026-05-20',
 };
 
 export const blogArticles: Array<{

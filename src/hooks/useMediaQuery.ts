@@ -5,7 +5,7 @@ import {useEffect, useState} from 'react';
  * Returns the initial value (defaultValue) on the first server-side render,
  * and the live match status afterward in the browser.
  */
-export function useMediaQuery(query: string, defaultValue = false): boolean {
+function useMediaQuery(query: string, defaultValue = false): boolean {
   const [matches, setMatches] = useState<boolean>(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return defaultValue;
@@ -30,11 +30,6 @@ export function useMediaQuery(query: string, defaultValue = false): boolean {
   }, [query]);
 
   return matches;
-}
-
-/** True on viewports >= 1024px. Single source of truth used across components. */
-export function useIsDesktop(): boolean {
-  return useMediaQuery('(min-width: 1024px)');
 }
 
 /** True when the user has requested reduced motion. */

@@ -1,10 +1,6 @@
 /** Shared rules for questionnaire uploads (worker + dev server + client hints). */
 
-export const DEFAULT_MAX_FILES = 100;
 export const DEFAULT_MAX_BYTES = 500 * 1024 * 1024; // 500 MB per file (videos)
-
-/** Workers/Pages POST bodies are capped (~100 MiB). Same-origin multipart fallback stays under this. */
-export const WORKER_PROXY_UPLOAD_MAX_BYTES = 95 * 1024 * 1024;
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v|mkv|avi)$/i;
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp|svg|heic|avif)$/i;
@@ -15,7 +11,6 @@ export interface UploadValidationInput {
   contentType: string;
   size: number;
   relativePath?: string;
-  maxFiles?: number;
   maxBytes?: number;
 }
 

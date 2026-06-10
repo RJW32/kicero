@@ -1,6 +1,6 @@
 import {PAGE_OPTIONS_ORDER} from '../data/questionnaire';
 
-export const CLIENT_UPLOAD_TOKEN_VERSION = 1;
+const CLIENT_UPLOAD_TOKEN_VERSION = 1;
 /** Signed links expire after this many seconds (shown in questionnaire email). */
 export const CLIENT_UPLOAD_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days
 
@@ -15,7 +15,7 @@ export type ClientUploadTokenPayload = {
 
 const enc = new TextEncoder();
 
-export function decodeBase64Url(s: string): Uint8Array {
+function decodeBase64Url(s: string): Uint8Array {
   const padded = s.replace(/-/g, '+').replace(/_/g, '/');
   const padLen = (4 - (padded.length % 4)) % 4;
   const b64 = padded + '='.repeat(padLen);
@@ -25,7 +25,7 @@ export function decodeBase64Url(s: string): Uint8Array {
   return out;
 }
 
-export function encodeBase64Url(buf: ArrayBuffer): string {
+function encodeBase64Url(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);

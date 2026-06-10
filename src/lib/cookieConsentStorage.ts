@@ -1,9 +1,9 @@
 /** Bump when categories or policy change so users see the banner again. */
-export const COOKIE_CONSENT_VERSION = 1;
+const COOKIE_CONSENT_VERSION = 1;
 
-export const COOKIE_CONSENT_STORAGE_KEY = 'kicero-cookie-consent';
+const COOKIE_CONSENT_STORAGE_KEY = 'kicero-cookie-consent';
 
-export type StoredCookieConsent = {
+type StoredCookieConsent = {
   v: number;
   /** Optional measurement scripts (Plausible, Microsoft Clarity, etc.). */
   analytics: boolean;
@@ -11,7 +11,7 @@ export type StoredCookieConsent = {
   t: number;
 };
 
-export function readStoredConsent(): StoredCookieConsent | null {
+function readStoredConsent(): StoredCookieConsent | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(COOKIE_CONSENT_STORAGE_KEY);

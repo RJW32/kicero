@@ -10,6 +10,8 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -22,5 +24,19 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src",
+    "functions",
+    "scripts",
+    "server.ts",
+    "worker.ts",
+    "vite.config.ts",
+    "eslint.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "uploads"
+  ]
 }

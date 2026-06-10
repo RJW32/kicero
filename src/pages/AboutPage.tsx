@@ -58,7 +58,7 @@ const SECTIONS = [
           everywhere in between.
         </p>
         <p>
-          The whole process can be done remotely over email and video, so
+          The whole process can be done remotely over email, so
           clients never need to be local. Every Kicero website is hosted on
           enterprise-grade Cloudflare infrastructure that is fast, secure and
           globally distributed.
@@ -87,7 +87,7 @@ const SECTIONS = [
           </li>
           <li>
             <strong>Ongoing maintenance</strong> — small updates included in
-            the monthly plan so the site never goes stale.
+            the monthly plan so the site doesn't have to be stale.
           </li>
           <li>
             <strong>Domain management</strong> — optional add-on if you want
@@ -111,7 +111,7 @@ const SECTIONS = [
         <p>
           The studio is intentionally lean: small enough to give every client
           personal attention, but careful enough about technology choices that
-          the websites it builds outperform much larger competitors.
+          the websites it builds outperform competitors.
         </p>
       </>
     ),
@@ -122,8 +122,8 @@ const SECTIONS = [
     body: (
       <>
         <p>
-          Kicero charges £40 once a website goes live — that&apos;s a £25
-          one-off setup fee plus the first month (£15) — and then £15 per
+          At our normal pricing, we charge £41 once a website goes live — that&apos;s a £25
+          one-off setup fee plus the first month (£16) — and then £16 per
           month after that. The monthly fee covers hosting, the contact form,
           security, and up to 30 minutes of small updates each month at no
           extra cost.
@@ -147,16 +147,14 @@ const SECTIONS = [
         <p>
           Most UK small businesses are quoted between £500 and £1,500 for a
           website that does, in practice, very little — and then charged
-          £60–£150 every time they want a small edit. Plenty of founders also
-          cumulatively spend more on builders such as Wix than they would pay
-          for a Kicero site, simply to keep a middling DIY result online,
-          because DIY tools assume you&apos;ll put in work that belongs to a
-          professional. Kicero was founded in 2026 to change that.
+          £60–£150 every time they want a small edit. Plenty of business owners also
+          end up spending more money and time on website builders such as Wix than they would pay
+          for a Kicero site. Kicero was founded in 2026 to change that.
         </p>
         <p>
           The idea is simple: build the website properly the first time, host
           it on enterprise-grade infrastructure, include the small updates,
-          and charge a fair, transparent monthly fee.
+          and charge a fair, transparent monthly fee for keeping it running.
         </p>
       </>
     ),

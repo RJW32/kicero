@@ -6,6 +6,7 @@ import {
   questionnaireQuestions,
 } from './src/data/questionnaire';
 import {buildClientUploadEmailParts} from './src/lib/clientUploadEmailParts';
+import {appendExtraPageFeesToSections} from './src/lib/questionnaireNotification';
 import {SENDGRID_DIRECT_LINK_TRACKING} from './src/lib/sendgridMail';
 import {
   pageSlugFromLabel,
@@ -534,6 +535,8 @@ async function handleQuestionnaire(request: Request, env: Env): Promise<Response
     list.push({label: question.label, value: value || '—'});
     sections.set(question.section, list);
   }
+
+  appendExtraPageFeesToSections(sections, answers.pagesWanted);
 
   const sectionText = Array.from(sections.entries())
     .map(([section, items]) => {

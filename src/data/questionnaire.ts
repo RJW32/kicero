@@ -113,6 +113,18 @@ export function computeExtraPageFees(pagesWanted: string[] | string | undefined)
   };
 }
 
+/** One-line summary for internal questionnaire notification emails (Pages section). */
+export function formatExtraPageFeesSummary(
+  pagesWanted: string[] | string | undefined,
+): string {
+  const {selectionOrder, extraPages, extraFeesTotal} = computeExtraPageFees(pagesWanted);
+  if (selectionOrder.length === 0) return '£0 (no pages selected)';
+  if (extraFeesTotal === 0) {
+    return `£0 — ${selectionOrder.length} page(s) selected, all within ${PAGES_INCLUDED_FREE} included`;
+  }
+  return `£${extraFeesTotal} — ${extraPages.length} extra page(s) at £${EXTRA_PAGE_SETUP_FEE_GBP} each (${extraPages.join(', ')})`;
+}
+
 /** Stable field id for the “Anything else?” textarea on each page follow-up step. */
 export const PAGE_ANYTHING_ELSE_FIELD_IDS: Record<PageOption, string> = {
   Home: 'page_home_anythingElse',
